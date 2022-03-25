@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="vectornav" type="vectornav_node" name="vectornav_node" output="screen">
+    <rosparam command="load" file="$(find vectornav)/config/vn100_params.yaml"/>
+  </node>
+</launch>

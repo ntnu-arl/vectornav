@@ -20,6 +20,12 @@ namespace vectornav
     uint16_t sync_out_skip_factor;
     uint32_t sync_out_pulse_width;
     bool get_uncomp_measurements;
+    std::string frame_id;
+
+    Config()
+    {
+      setConfigName("VectorNav-Config");
+    }
 
    protected:
     void checkParams() const override
@@ -27,6 +33,21 @@ namespace vectornav
       checkParamNE(port, std::string(""), "port cannot be an empty string");
       checkParamCond(BAUD_RATES.find(baud_rate) != BAUD_RATES.end(),
                      "baud_rate not supported by the sensor");
+    }
+
+    void printFields() const override
+    {
+      printField("port", port);
+      printField("baud_rate", baud_rate);
+      printField("async_port", async_port);
+      printField("async_rate_divisor", async_rate_divisor);
+      printField("is_triggered", is_triggered);
+      printField("sync_in_skip_factor", sync_in_skip_factor);
+      printField("is_triggering", is_triggering);
+      printField("sync_out_skip_factor", sync_out_skip_factor);
+      printField("sync_out_pulse_width", sync_out_pulse_width);
+      printField("get_uncomp_measurements", get_uncomp_measurements);
+      printField("frame_id", frame_id);
     }
 
     void fromRosParam() override
@@ -48,6 +69,7 @@ namespace vectornav
       rosParam("sync_out_pulse_width", &i_param);
       sync_out_pulse_width = static_cast<uint32_t>(i_param);
       rosParam("get_uncomp_measurements", &get_uncomp_measurements);
+      rosParam("frame_id", &frame_id);
     }
   };
 
