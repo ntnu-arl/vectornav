@@ -23,7 +23,7 @@ namespace vectornav
   {
     // Should try to set the baud rate instead of blindly trusting the baud rate to be available
     // Connect to sensor
-    ROS_INFO("Connecting to sensor at %s @ %d", config_.port, config_.baud_rate);
+    ROS_INFO("VectorNav: Connecting to sensor at %s @ %d", config_.port.c_str(), config_.baud_rate);
     sensor_.connect(config_.port, config_.baud_rate);
 
     if (!sensor_.verifySensorConnectivity())
@@ -31,7 +31,7 @@ namespace vectornav
       ROS_FATAL("Sensor connectivity test failed");
       return;
     }
-    ROS_INFO("Sensor connected");
+    ROS_INFO("VectorNav: Sensor connected");
 
     PrintSensorInfo();
 
@@ -144,10 +144,10 @@ namespace vectornav
 
   void VectorNav::PrintSensorInfo()
   {
-    ROS_INFO("Model Number: %s", sensor_.readModelNumber());
-    ROS_INFO("Firmware Version: %s", sensor_.readFirmwareVersion());
-    ROS_INFO("Hardware Revision: %d", sensor_.readHardwareRevision());
-    ROS_INFO("Serial Number: %d", sensor_.readSerialNumber());
+    ROS_INFO("VectorNav: Model Number: %s", sensor_.readModelNumber().c_str());
+    ROS_INFO("VectorNav: Firmware Version: %s", sensor_.readFirmwareVersion().c_str());
+    ROS_INFO("VectorNav: Hardware Revision: %d", sensor_.readHardwareRevision());
+    ROS_INFO("VectorNav: Serial Number: %d", sensor_.readSerialNumber());
   }
 
   void VectorNav::PopulateImuMsg(sensor_msgs::Imu& msg, vn::sensors::CompositeData& cd,
