@@ -157,7 +157,7 @@ namespace vectornav
     msg.header.frame_id = config_.frame_id;
 
     vn::math::vec4f q = cd.quaternion();
-    vn::math::vec3f acc, omega;
+    vn::math::vec3f acc, omega;  // m/s^2, rad/s
     if (uncomp)
     {
       acc = cd.accelerationUncompensated();
@@ -191,7 +191,7 @@ namespace vectornav
   {
     msg.header.stamp = time;
     msg.header.frame_id = config_.frame_id;
-    vn::math::vec3f mag;
+    vn::math::vec3f mag;  // gauss
     if (config_.get_uncomp_measurements)
     {
       mag = cd.magnetic();
@@ -208,7 +208,7 @@ namespace vectornav
   {
     msg.header.stamp = time;
     msg.header.frame_id = config_.frame_id;
-    msg.temperature = cd.temperature();
+    msg.temperature = cd.temperature();  // Celsius
     // Add covariance from config. is it possible to get this from sensor?
   }
 
@@ -217,7 +217,7 @@ namespace vectornav
   {
     msg.header.stamp = time;
     msg.header.frame_id = config_.frame_id;
-    msg.fluid_pressure = cd.pressure();
+    msg.fluid_pressure = cd.pressure();  // kPa
     // Add covariance from config. is it possible to get this from sensor?
   }
 
