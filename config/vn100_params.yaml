@@ -1,7 +1,7 @@
 port: /dev/ttyUSB0
 baud_rate: 921600
 async_port: 2
-async_rate_divisor: 1
+async_rate_divisor: 4 # imu rate divided by this value gives the output rate
 is_triggered: false
 sync_in_skip_factor: 0
 is_triggering: true

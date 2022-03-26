@@ -8,19 +8,20 @@ namespace vectornav
 {
   struct Config : public config_utilities::Config<Config>
   {
-    std::string port;
-    uint32_t baud_rate;
-    uint16_t async_port;
-    uint16_t async_rate_divisor;
+    std::string port = "/dev/ttyUSB0";
+    uint32_t baud_rate = 921600;
+    uint16_t async_port = 2;
+    uint16_t async_rate_divisor = 4;
     // Configuration for the sensor being triggered by an external source
-    bool is_triggered;
-    uint16_t sync_in_skip_factor;
+    bool is_triggered = false;
+    uint16_t sync_in_skip_factor = 0;
     // Configuration for the sensor triggering external objects
-    bool is_triggering;
-    uint16_t sync_out_skip_factor;
-    uint32_t sync_out_pulse_width;
-    bool get_uncomp_measurements;
-    std::string frame_id;
+    bool is_triggering = true;
+    uint16_t sync_out_skip_factor = 39;
+    uint32_t sync_out_pulse_width = 1.0e+9;
+    bool publish_uncomp_imu = false;
+    bool publish_uncomp_mag = false;
+    std::string frame_id = "imu_link";
 
     Config()
     {
@@ -46,8 +47,9 @@ namespace vectornav
       printField("is_triggering", is_triggering);
       printField("sync_out_skip_factor", sync_out_skip_factor);
       printField("sync_out_pulse_width", sync_out_pulse_width);
-      printField("get_uncomp_measurements", get_uncomp_measurements);
       printField("frame_id", frame_id);
+      printField("publish_uncomp_imu", publish_uncomp_imu);
+      printField("publish_uncomp_mag", publish_uncomp_mag);
     }
 
     void fromRosParam() override
@@ -68,8 +70,9 @@ namespace vectornav
       sync_out_skip_factor = static_cast<uint16_t>(i_param);
       rosParam("sync_out_pulse_width", &i_param);
       sync_out_pulse_width = static_cast<uint32_t>(i_param);
-      rosParam("get_uncomp_measurements", &get_uncomp_measurements);
       rosParam("frame_id", &frame_id);
+      rosParam("publish_uncomp_imu", &publish_uncomp_imu);
+      rosParam("publish_uncomp_mag", &publish_uncomp_mag);
     }
   };
 
