@@ -41,16 +41,15 @@ namespace vectornav
     // Setup using the binary output registers. This is significantly faster than using ASCII output
     vn::sensors::BinaryOutputRegister bor(
         ASYNCMODE_PORT2, config_.async_rate_divisor,
-        COMMONGROUP_TIMESTARTUP |
+        COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE |
+            COMMONGROUP_ACCEL | COMMONGROUP_MAGPRES |
             (config_.is_triggered ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT
                                   : COMMONGROUP_NONE) |
-            COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL |
-            COMMONGROUP_MAGPRES,
-        TIMEGROUP_NONE,
-        config_.get_uncomp_measurements
-            ? (IMUGROUP_UNCOMPACCEL | IMUGROUP_UNCOMPGYRO | IMUGROUP_UNCOMPMAG)
-            : IMUGROUP_NONE,
+            (config_.publish_uncomp_imu ? COMMONGROUP_IMU : COMMONGROUP_NONE),
+        TIMEGROUP_NONE, config_.publish_uncomp_mag ? IMUGROUP_UNCOMPMAG : IMUGROUP_NONE,
         GPSGROUP_NONE, ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
+
+    // Note: Time since startup and time since syncin are measured in nanoseconds
 
     vn::sensors::BinaryOutputRegister bor_none(ASYNCMODE_NONE, 1, COMMONGROUP_NONE, TIMEGROUP_NONE,
                                                IMUGROUP_NONE, GPSGROUP_NONE, ATTITUDEGROUP_NONE,
@@ -192,13 +191,17 @@ namespace vectornav
     msg.header.stamp = time;
     msg.header.frame_id = config_.frame_id;
     vn::math::vec3f mag;  // gauss
-    if (config_.get_uncomp_measurements)
+    if (uncomp)
     {
-      mag = cd.magnetic();
+      //  This measurement is compensated by the static calibration (individual factory calibration
+      //  stored in flash), and the user compensation, however it is not compensated by the onboard
+      //  Hard/Soft Iron estimator.
+      mag = cd.magneticUncompensated();
     }
     else
     {
-      mag = cd.magneticUncompensated();
+      // This measurement has been corrected for hard/soft iron corrections (if enabled).
+      mag = cd.magnetic();
     }
     // Add covariance from config. is it possible to get this from sensor?
   }
