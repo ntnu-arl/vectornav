@@ -159,11 +159,17 @@ namespace vectornav
     vn::math::vec3f acc, omega;  // m/s^2, rad/s
     if (uncomp)
     {
+      // These measurements correspond to the calibrated angular rate and acceleration measurements
+      // straight from the IMU. The measurements have not been corrected for bias offset by the
+      // onboard Kalman filter.
       acc = cd.accelerationUncompensated();
       omega = cd.angularRateUncompensated();
     }
     else
     {
+      // This measurement is compensated by the static calibration (individual factory calibration
+      // stored in flash), however it is not compensated by any dynamic calibration such as bias
+      // compensation from the onboard INS Kalman filter.
       acc = cd.acceleration();
       omega = cd.angularRate();
     }
