@@ -1,11 +1,45 @@
+# Port on which the VN-100 is connected
 port: /dev/ttyUSB0
+
+# This should be a value from the set [9600,   19200,  38400,  57600, 115200, 128000, 230400, 460800, 921600] chosen such that it is able to support the required data streaming rate
 baud_rate: 921600
-async_port: 2
-async_rate_divisor: 4 # imu rate divided by this value gives the output rate
+
+# The VN-100 has two ports that it can stream data from. This param controls which of the ports is to be used. Possible values are:
+# 0 - None
+# 1 - Port 1
+# 2 - Port 2
+# 3 - Both ports
+async_port: 2 
+
+# imu rate divided by this value gives the output rate
+async_rate_divisor: 4 
+
+# Control whether the IMU is triggered by a pulse on the SYNCIN pin
 is_triggered: false
+
+# A pulse on the SYNCIN pin will trigger the IMU after skipping this many samples
 sync_in_skip_factor: 0
+
+# Control whether the IMU provides a pulse on the SYNCOUT pin
 is_triggering: true
+
+# A pulse on the SYNCOUT pin will trigger the IMU after skipping this many samples
 sync_out_skip_factor: 39
+
+# A pulse on the SYNCOUT pin will last for this many nanoseconds
 sync_out_pulse_width: 1.0e+9
-get_uncomp_measurements: true
+
+# Control whether the Accelerometer and Gyroscopre measurements that have not been compensated for by the onboard Kalman filter are published
+publish_uncomp_imu: true
+
+# Control whether the Magnetormeter measurements that have not been compensated for by the Hard/Soft Iron Calibration are published (requries this the calibration to be enabled seperately)
+publish_uncomp_mag: false
+
+# Frame id for the headers of the published messages
 frame_id: imu_link
+
+# Variance of the temperature measurements
+temp_variance: 0.1
+
+# Variance of the pressure measurements
+pressure_variance: 0.1
