@@ -1,0 +1,1 @@
+DRIVERS=="usb", ATTRS{idProduct}=="ea60", ATTRS{idVendor}=="10c4", SYMLINK+="ttyUSB_VN100"
