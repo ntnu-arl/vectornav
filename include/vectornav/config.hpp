@@ -25,10 +25,7 @@ namespace vectornav
     float temp_variance = 0.1;
     float pres_variance = 0.1;
 
-    Config()
-    {
-      setConfigName("VectorNav-Config");
-    }
+    Config() { setConfigName("VectorNav-Config"); }
 
    protected:
     void checkParams() const override
@@ -36,6 +33,8 @@ namespace vectornav
       checkParamNE(port, std::string(""), "port cannot be an empty string");
       checkParamCond(BAUD_RATES.find(baud_rate) != BAUD_RATES.end(),
                      "baud_rate not supported by the sensor");
+      checkParamCond(async_port >= 0 && async_port <= 3, "async_port must be between 0 and 3");
+      checkParamNE(frame_id, std::string(""), "frame_id cannot be an empty string");
     }
 
     void printFields() const override
