@@ -35,12 +35,16 @@ namespace vectornav
 
     PrintSensorInfo();
 
+    // Feature: Factory data reset/ reset the sensor before any configuration change is made. This
+    // way only the configuration changes available thorough the driver will be avaialble. To be
+    // checked whether this is feasible and sensible.
+
     // Stop any sort of data coming from the sensor before writing a config
     sensor_.writeAsyncDataOutputType(VNOFF);
 
     // Setup using the binary output registers. This is significantly faster than using ASCII output
     vn::sensors::BinaryOutputRegister bor(
-        ASYNCMODE_PORT2, config_.async_rate_divisor,
+        config_.async_port, config_.async_rate_divisor,
         COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE |
             COMMONGROUP_ACCEL | COMMONGROUP_MAGPRES |
             (config_.is_triggered ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT
@@ -72,7 +76,7 @@ namespace vectornav
 
   void VectorNav::StopSensor()
   {
-    // Might need sleeps here to ensure the connection is closed properly
+    // Might need sleeps here to ensure the connection is closed properly - Need to check
     sensor_.unregisterAsyncPacketReceivedHandler();
     sensor_.disconnect();
   }
@@ -175,8 +179,8 @@ namespace vectornav
     else
     {
       // This measurement is compensated by the static calibration (individual factory calibration
-      // stored in flash), however it is not compensated by any dynamic calibration such as bias
-      // compensation from the onboard INS Kalman filter.
+      // stored in flash), the user compensation, and the dynamic bias compensation from the onboard
+      // INS Kalman filter.
       acc = cd.acceleration();
       omega = cd.angularRate();
     }
