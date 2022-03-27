@@ -86,25 +86,26 @@ namespace vectornav
 
   void VectorNav::BinaryAsyncMessageCallback(Packet& p, size_t index)
   {
-    const ros::Time ros_time = ros::Time::now();
+    const ros::Time arrival_stamp = ros::Time::now();
     vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
 
     // Get corrected timestamp
-    ros::Time corrected_time = ros_time;
+    ros::Time corrected_stamp;
+    CorrectTimestamp(arrival_stamp, corrected_stamp);
 
     // IMU
     if (pub_imu_.getNumSubscribers())
     {
       sensor_msgs::Imu msg;
-      PopulateImuMsg(msg, cd, corrected_time, false);
+      PopulateImuMsg(msg, cd, corrected_stamp, false);
       pub_imu_.publish(msg);
     }
 
     // Uncompensated IMU
-    if (pub_uncomp_imu_.getNumSubscribers() && config_.get_uncomp_measurements)
+    if (pub_uncomp_imu_.getNumSubscribers() && config_.publish_uncomp_imu)
     {
       sensor_msgs::Imu msg;
-      PopulateImuMsg(msg, cd, corrected_time, true);
+      PopulateImuMsg(msg, cd, corrected_stamp, true);
       pub_uncomp_imu_.publish(msg);
     }
 
@@ -112,15 +113,15 @@ namespace vectornav
     if (pub_mag_.getNumSubscribers())
     {
       sensor_msgs::MagneticField msg;
-      PopulateMagMsg(msg, cd, corrected_time, false);
+      PopulateMagMsg(msg, cd, corrected_stamp, false);
       pub_mag_.publish(msg);
     }
 
     // Uncompensated Magnetic Field
-    if (pub_uncomp_mag_.getNumSubscribers())
+    if (pub_uncomp_mag_.getNumSubscribers() && config_.publish_uncomp_mag)
     {
       sensor_msgs::MagneticField msg;
-      PopulateMagMsg(msg, cd, corrected_time, true);
+      PopulateMagMsg(msg, cd, corrected_stamp, true);
       pub_uncomp_mag_.publish(msg);
     }
 
@@ -128,7 +129,7 @@ namespace vectornav
     if (pub_temp_.getNumSubscribers())
     {
       sensor_msgs::Temperature msg;
-      PopulateTempMsg(msg, cd, corrected_time);
+      PopulateTempMsg(msg, cd, corrected_stamp);
       pub_temp_.publish(msg);
     }
 
@@ -136,9 +137,15 @@ namespace vectornav
     if (pub_pres_.getNumSubscribers())
     {
       sensor_msgs::FluidPressure msg;
-      PopulatePresMsg(msg, cd, corrected_time);
+      PopulatePresMsg(msg, cd, corrected_stamp);
       pub_pres_.publish(msg);
     }
+  }
+
+  void VectorNav::CorrectTimestamp(const ros::Time& arrival_stamp, ros::Time& corrected_stamp)
+  {
+    // To be written
+    corrected_stamp = arrival_stamp;
   }
 
   void VectorNav::PrintSensorInfo()
@@ -150,9 +157,9 @@ namespace vectornav
   }
 
   void VectorNav::PopulateImuMsg(sensor_msgs::Imu& msg, vn::sensors::CompositeData& cd,
-                                 const ros::Time& time, bool uncomp)
+                                 const ros::Time& stamp, bool uncomp)
   {
-    msg.header.stamp = time;
+    msg.header.stamp = stamp;
     msg.header.frame_id = config_.frame_id;
 
     vn::math::vec4f q = cd.quaternion();
@@ -192,9 +199,9 @@ namespace vectornav
   }
 
   void VectorNav::PopulateMagMsg(sensor_msgs::MagneticField& msg, vn::sensors::CompositeData& cd,
-                                 const ros::Time& time, bool uncomp)
+                                 const ros::Time& stamp, bool uncomp)
   {
-    msg.header.stamp = time;
+    msg.header.stamp = stamp;
     msg.header.frame_id = config_.frame_id;
     vn::math::vec3f mag;  // gauss
     if (uncomp)
@@ -213,21 +220,20 @@ namespace vectornav
   }
 
   void VectorNav::PopulateTempMsg(sensor_msgs::Temperature& msg, vn::sensors::CompositeData& cd,
-                                  const ros::Time& time)
+                                  const ros::Time& stamp)
   {
-    msg.header.stamp = time;
+    msg.header.stamp = stamp;
     msg.header.frame_id = config_.frame_id;
     msg.temperature = cd.temperature();  // Celsius
-    // Add covariance from config. is it possible to get this from sensor?
+    msg.variance = config_.temp_variance;
   }
 
   void VectorNav::PopulatePresMsg(sensor_msgs::FluidPressure& msg, vn::sensors::CompositeData& cd,
-                                  const ros::Time& time)
+                                  const ros::Time& stamp)
   {
-    msg.header.stamp = time;
+    msg.header.stamp = stamp;
     msg.header.frame_id = config_.frame_id;
     msg.fluid_pressure = cd.pressure();  // kPa
-    // Add covariance from config. is it possible to get this from sensor?
+    msg.variance = config_.pres_variance;
   }
-
 }  // namespace vectornav

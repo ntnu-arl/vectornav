@@ -40,6 +40,7 @@ namespace vectornav
     void StopSensor();
     void SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketReceivedHandler handler);
     void BinaryAsyncMessageCallback(Packet& p, size_t index);
+    void CorrectTimestamp(const ros::Time& arrival_stamp, ros::Time& corrected_stamp);
     void PrintSensorInfo();
     void PopulateImuMsg(sensor_msgs::Imu& msg, vn::sensors::CompositeData& cd,
                         const ros::Time& time, bool uncomp);
