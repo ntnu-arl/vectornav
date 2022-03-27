@@ -22,6 +22,8 @@ namespace vectornav
     bool publish_uncomp_imu = false;
     bool publish_uncomp_mag = false;
     std::string frame_id = "imu_link";
+    float temp_variance = 0.1;
+    float pres_variance = 0.1;
 
     Config()
     {
@@ -50,6 +52,8 @@ namespace vectornav
       printField("frame_id", frame_id);
       printField("publish_uncomp_imu", publish_uncomp_imu);
       printField("publish_uncomp_mag", publish_uncomp_mag);
+      printField("temp_variance", temp_variance);
+      printField("pres_variance", pres_variance);
     }
 
     void fromRosParam() override
@@ -73,6 +77,8 @@ namespace vectornav
       rosParam("frame_id", &frame_id);
       rosParam("publish_uncomp_imu", &publish_uncomp_imu);
       rosParam("publish_uncomp_mag", &publish_uncomp_mag);
+      rosParam("temp_variance", &temp_variance);
+      rosParam("pres_variance", &pres_variance);
     }
   };
 
