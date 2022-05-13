@@ -23,6 +23,8 @@ sudo cp vectornav/udev/* /etc/udev/rules.d/
 sudo udevadm control --reload
 ```
 
+Note: The USB latency timer should be set to 1 for the IMU to avoid the [bunching up of IMU messages](https://github.com/ntnu-arl/vectornav/issues/5). The udev rules automatically does this for you. 
+
 ### Running the node
 
 ```bash
