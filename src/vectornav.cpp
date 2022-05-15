@@ -98,9 +98,9 @@ void VectorNav::SetupSensor()
 
   PrintSensorInfo();
 
-  // TODO: Feature: Factory data reset/ reset the sensor before any configuration change is made. This
-  // way only the configuration changes available thorough the driver will be avaialble. To be
-  // checked whether this is feasible and sensible.
+  // TODO: Feature (parameterized)
+  // Factory data reset/reset the sensor before any configuration change is made. This
+  // way only the configuration changes available thorough the driver will be avaialble.
 
   // Stop any sort of data coming from the sensor before writing a config
   logger_->debug("Turning off data streaming");
@@ -117,14 +117,12 @@ void VectorNav::SetupSensor()
     TIMEGROUP_NONE, publish_uncomp_mag_ ? IMUGROUP_UNCOMPMAG : IMUGROUP_NONE, GPSGROUP_NONE,
     ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
-  // Note: Time since startup and time since syncin are measured in nanoseconds
-
   vn::sensors::BinaryOutputRegister bor_none(
     ASYNCMODE_NONE, 1, COMMONGROUP_NONE, TIMEGROUP_NONE, IMUGROUP_NONE, GPSGROUP_NONE,
     ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
   // Use only one binary output register to minimize data usage. The other registers are
-  // explicitly disabled so that they dont get used due to a configuration already on the sensor
+  // explicitly disabled so that they don't get used due to a configuration already on the sensor
   sensor_.writeBinaryOutput1(bor);
   sensor_.writeBinaryOutput2(bor_none);
   sensor_.writeBinaryOutput3(bor_none);
@@ -220,7 +218,7 @@ void VectorNav::CorrectTimestamp(
   const ros::Time & arrival_stamp, uint64_t startup_time, uint64_t sync_in_time,
   ros::Time & corrected_stamp)
 {
-  // TODO: Implement this
+  // TODO: Feature (parameterized)
   // Possible timestamp corrections (which method to use could be a parameter):
   // 1. Do nothing - Host timestamping (inaccurate due to transmission and processing delays)
   // 2. Get the ros time and time since startup from the sensor and use that as reference
@@ -279,7 +277,7 @@ void VectorNav::PopulateImuMsg(
   msg.linear_acceleration.y = acc[1];
   msg.linear_acceleration.z = acc[2];
 
-  // Add covariance from config
+  // TODO: Add covariance from config
 }
 
 void VectorNav::PopulateMagMsg(
@@ -300,7 +298,7 @@ void VectorNav::PopulateMagMsg(
     mag = cd.magnetic();
     logger_->trace("Populating Magnetic Field message");
   }
-  // Add covariance from config. is it possible to get this from sensor?
+  // TODO: Add covariance from config
 }
 
 void VectorNav::PopulateTempMsg(
