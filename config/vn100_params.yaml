@@ -1,7 +1,7 @@
 # Port on which the VN-100 is connected
 port: /dev/ttyUSB0
 
-# This should be a value from the set [9600,   19200,  38400,  57600, 115200, 128000, 230400, 460800, 921600] chosen such that it is able to support the required data streaming rate
+# This should be a value from the set [9600, 19200, 38400, 57600, 115200, 128000, 230400, 460800, 921600] chosen such that it is able to support the required data streaming rate
 baud_rate: 921600
 
 # The VN-100 has two ports that it can stream data from. This param controls which of the ports is to be used. Possible values are:
@@ -9,10 +9,10 @@ baud_rate: 921600
 # 1 - Port 1
 # 2 - Port 2
 # 3 - Both ports
-async_port: 2 
+async_port: 2
 
-# imu rate divided by this value gives the output rate
-async_rate_divisor: 4 
+# imu rate (800 Hz) divided by this value gives the output rate
+async_rate_divisor: 4
 
 # Control whether the IMU is triggered by a pulse on the SYNCIN pin
 is_triggered: false
