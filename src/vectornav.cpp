@@ -120,7 +120,7 @@ void VectorNav::SetupSensor()
 
   if (!sensor_.verifySensorConnectivity()) {
     logger_->critical("Sensor connectivity check failed");
-    return;
+    throw std::runtime_error("Sensor connectivity check failed");
   }
   logger_->info("Sensor connectivity check passed");
 
