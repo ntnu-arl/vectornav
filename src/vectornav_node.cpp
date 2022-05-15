@@ -13,6 +13,7 @@ int main(int argc, char ** argv)
   ros::NodeHandle pnh("~");
   vectornav::VectorNav vn(pnh);
   vn.SetupSensor();
+  // TODO: Check if there is a way to go directly to the function instead of the callback_wrapper
   vn.SetupAsyncMessageCallback(vectornav::callback_wrapper);
   ros::spin();
   vn.StopSensor();
