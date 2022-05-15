@@ -81,9 +81,8 @@ public:
   void StopSensor();
   void SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketReceivedHandler handler);
   void BinaryAsyncMessageCallback(Packet & p, size_t index);
-  void CorrectTimestamp(
-    const ros::Time & arrival_stamp, uint64_t startup_time, uint64_t sync_in_time,
-    ros::Time & corrected_stamp);
+  const ros::Time CorrectTimestamp(
+    const ros::Time & arrival_stamp, uint64_t startup_time, uint64_t sync_in_time);
   void PrintSensorInfo();
   void PopulateImuMsg(
     sensor_msgs::Imu & msg, vn::sensors::CompositeData & cd, const ros::Time & time, bool uncomp);

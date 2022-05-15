@@ -185,9 +185,7 @@ void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
 
   logger_->trace("Parsing binary async message");
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
-
-  // Get corrected timestamp
-  ros::Time corrected_stamp;
+  logger_->trace("Finished parsing binary async message");
 
   // The system time since startup measured in nano seconds. The time since startup is based upon the internal
   // TXCO oscillator for the MCU. The accuracy of the internal TXCO is +/- 20ppm (-40C to 85C).
@@ -196,7 +194,8 @@ void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
   // The time since the last SyncIn trigger event expressed in nano seconds.
   uint64_t sync_in_time = cd.timeSyncIn();
 
-  CorrectTimestamp(arrival_stamp, startup_time, sync_in_time, corrected_stamp);
+  // Get corrected timestamp
+  ros::Time corrected_stamp = CorrectTimestamp(arrival_stamp, startup_time, sync_in_time);
 
   logger_->trace("Publishing parsed data");
   // IMU
@@ -242,20 +241,22 @@ void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
   }
 }
 
-void VectorNav::CorrectTimestamp(
-  const ros::Time & arrival_stamp, uint64_t startup_time, uint64_t sync_in_time,
-  ros::Time & corrected_stamp)
+const ros::Time VectorNav::CorrectTimestamp(
+  const ros::Time & arrival_stamp, uint64_t startup_time, uint64_t sync_in_time)
 {
+  logger_->trace("Correcting timestamp");
   // TODO: Feature (parameterized)
   // Possible timestamp corrections (which method to use could be a parameter):
   // 1. Do nothing - Host timestamping (inaccurate due to transmission and processing delays)
   // 2. Get the ros time and time since startup from the sensor and use that as reference. This was implemented here (https://github.com/ntnu-arl/vn100_nodelet/blob/ba494935b48134e2ff01fcd2ef4676615c273e92/src/vn100_nodelet.cpp#L294-L306) but the timestamp seemed to drift to become completely unusable
   // 3. Synchronize with an external micro controller that is triggering the sensor and use the sync in time and the known triggers to correct the time
   // 4. Assume that the sensor has an almost constant rate and correct the timestamp based on the timestamp that is expected to arrive next - This is implemented here: https://github.com/dawonn/vectornav/blob/6824e8b668b889a76214636cbc00a21c0b208a29/src/main.cpp#L725-L749
+  ros::Time corrected_stamp;
   corrected_stamp = arrival_stamp;
   logger_->trace(
-    "Arrival timestamp: {}\nCorrected timestamp: {}", arrival_stamp.toSec(),
+    "Arrival timestamp: {} Corrected timestamp: {}", arrival_stamp.toSec(),
     corrected_stamp.toSec());
+  return corrected_stamp;
 }
 
 void VectorNav::PrintSensorInfo()
