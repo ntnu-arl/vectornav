@@ -43,3 +43,23 @@ temp_variance: 0.1
 
 # Variance of the pressure measurements
 pressure_variance: 0.1
+
+# Linear Accleration Covariance
+linear_accel_covariance: [0.01, 0.0, 0.0
+                          0.0, 0.01, 0.0
+                          0.0, 0.0, 0.01]
+
+# Angular Velocity Covariance
+angular_vel_covariance: [0.01, 0.0, 0.0
+                         0.0, 0.01, 0.0
+                         0.0, 0.0, 0.01]
+
+# Orientation Covariance
+orientation_covariance: [0.01, 0.0, 0.0
+                         0.0, 0.01, 0.0
+                         0.0, 0.0, 0.01]
+
+# Magnetic Field Covariance
+magnetic_covariance: [0.01, 0.0, 0.0
+                      0.0, 0.01, 0.0
+                      0.0, 0.0, 0.01]

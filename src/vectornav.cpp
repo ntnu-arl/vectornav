@@ -30,14 +30,13 @@ VectorNav::VectorNav(ros::NodeHandle & pnh)
   logger_->flush_on(log_level_);
 
   // Setup Publishers
-  logger_->debug("Set up publishers start");
+  logger_->debug("Setting up publishers");
   pub_imu_ = pnh.advertise<sensor_msgs::Imu>("imu", 1000, false);
   pub_uncomp_imu_ = pnh.advertise<sensor_msgs::Imu>("uncomp_imu", 1000, false);
   pub_mag_ = pnh.advertise<sensor_msgs::MagneticField>("magetic_field", 1000, false);
   pub_uncomp_mag_ = pnh.advertise<sensor_msgs::MagneticField>("uncomp_magetic_field", 1000, false);
   pub_temp_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
   pub_pres_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
-  logger_->debug("Set up publishers end");
 }
 
 VectorNav::~VectorNav() {}
@@ -69,6 +68,29 @@ void VectorNav::ReadParams(ros::NodeHandle & pnh)
   pnh.param<std::string>("log_directory", log_directory_, "/tmp/vectornav/");
   pnh.param<int>("log_level", i_param, 0);
   log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  XmlRpc::XmlRpcValue temp_rpc;
+  pnh.getParam("linear_accel_covariance", temp_rpc);
+  SetCovarianceMatrix(temp_rpc, linear_accel_covariance_);
+  pnh.getParam("angular_vel_covariance", temp_rpc);
+  SetCovarianceMatrix(temp_rpc, angular_vel_covariance_);
+  pnh.getParam("orientation_covariance", temp_rpc);
+  SetCovarianceMatrix(temp_rpc, orientation_covariance_);
+  pnh.getParam("magnetic_field_covariance", temp_rpc);
+  SetCovarianceMatrix(temp_rpc, mag_covariance_);
+}
+
+void VectorNav::SetCovarianceMatrix(
+  const XmlRpc::XmlRpcValue & covariance_list, boost::array<double, 9ul> & covariance_matrix)
+{
+  assert(covariance_list.getType() == XmlRpc::XmlRpcValue::TypeArray);
+  assert(covariance_list.size() == 9);
+  for (int i = 0; i < covariance_list.size(); i++) {
+    // Use string stream here to avoid issues with parsing with decimal points
+    std::ostringstream ostr;
+    ostr << covariance_list[i];
+    std::istringstream istr(ostr.str());
+    istr >> covariance_matrix[i];
+  }
 }
 
 void VectorNav::VerifyParams()
@@ -81,6 +103,12 @@ void VectorNav::VerifyParams()
   assert(frame_id_.size() > 0);
   assert(temp_variance_ > 0);
   assert(pres_variance_ > 0);
+  for (size_t i = 0; i < 9; i++) {
+    assert(linear_accel_covariance_[i] >= 0);
+    assert(angular_vel_covariance_[i] >= 0);
+    assert(orientation_covariance_[i] >= 0);
+    assert(mag_covariance_[i] >= 0);
+  }
 }
 
 void VectorNav::SetupSensor()
@@ -263,7 +291,7 @@ void VectorNav::PopulateImuMsg(
     logger_->trace("Populating IMU message");
   }
 
-  // Allow for transformation to different frame
+  // TODO: Feature: Allow for transformation to different frame
   msg.orientation.x = q[0];
   msg.orientation.y = q[1];
   msg.orientation.z = q[2];
@@ -277,7 +305,9 @@ void VectorNav::PopulateImuMsg(
   msg.linear_acceleration.y = acc[1];
   msg.linear_acceleration.z = acc[2];
 
-  // TODO: Add covariance from config
+  msg.linear_acceleration_covariance = linear_accel_covariance_;
+  msg.angular_velocity_covariance = angular_vel_covariance_;
+  msg.orientation_covariance = orientation_covariance_;
 }
 
 void VectorNav::PopulateMagMsg(
@@ -298,7 +328,7 @@ void VectorNav::PopulateMagMsg(
     mag = cd.magnetic();
     logger_->trace("Populating Magnetic Field message");
   }
-  // TODO: Add covariance from config
+  msg.magnetic_field_covariance = mag_covariance_;
 }
 
 void VectorNav::PopulateTempMsg(

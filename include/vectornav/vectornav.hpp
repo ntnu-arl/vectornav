@@ -60,6 +60,10 @@ private:
   float pres_variance_;
   std::string log_directory_;
   spdlog::level::level_enum log_level_;
+  boost::array<double, 9ul> linear_accel_covariance_;
+  boost::array<double, 9ul> angular_vel_covariance_;
+  boost::array<double, 9ul> orientation_covariance_;
+  boost::array<double, 9ul> mag_covariance_;
 
   // Logging
   std::shared_ptr<spdlog::logger> logger_;
@@ -70,6 +74,8 @@ public:
   VectorNav(ros::NodeHandle & pnh);
   ~VectorNav();
   void ReadParams(ros::NodeHandle & pnh);
+  void SetCovarianceMatrix(
+    const XmlRpc::XmlRpcValue & covariance_list, boost::array<double, 9ul> & covariance_matrix);
   void VerifyParams();
   void SetupSensor();
   void StopSensor();
