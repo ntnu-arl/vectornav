@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
 )
 
+find_package(spdlog REQUIRED)
+
 add_subdirectory(vnproglib/cpp libvncxx)
 
 catkin_package(
@@ -29,4 +31,5 @@ add_executable(vectornav_node src/vectornav_node.cpp src/vectornav.cpp)
 target_link_libraries(vectornav_node
   ${catkin_LIBRARIES}
   libvncxx
+  spdlog::spdlog
 )

@@ -19,6 +19,11 @@
 #include <sensor_msgs/Temperature.h>
 #include <sensor_msgs/FluidPressure.h>
 
+// spdlog
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+
 using namespace vn::protocol::uart;
 
 namespace vectornav
@@ -53,6 +58,13 @@ namespace vectornav
     std::string frame_id_;
     float temp_variance_;
     float pres_variance_;
+    std::string log_directory_;
+    spdlog::level::level_enum log_level_;
+
+    // Logging
+    std::shared_ptr<spdlog::logger> logger_;
+    std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> logger_console_sink_;
+    std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logger_file_sink_;
 
    public:
     VectorNav(ros::NodeHandle& pnh);
