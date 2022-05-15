@@ -249,7 +249,7 @@ void VectorNav::CorrectTimestamp(
   // TODO: Feature (parameterized)
   // Possible timestamp corrections (which method to use could be a parameter):
   // 1. Do nothing - Host timestamping (inaccurate due to transmission and processing delays)
-  // 2. Get the ros time and time since startup from the sensor and use that as reference
+  // 2. Get the ros time and time since startup from the sensor and use that as reference. This was implemented here (https://github.com/ntnu-arl/vn100_nodelet/blob/ba494935b48134e2ff01fcd2ef4676615c273e92/src/vn100_nodelet.cpp#L294-L306) but the timestamp seemed to drift to become completely unusable
   // 3. Synchronize with an external micro controller that is triggering the sensor and use the sync in time and the known triggers to correct the time
   // 4. Assume that the sensor has an almost constant rate and correct the timestamp based on the timestamp that is expected to arrive next - This is implemented here: https://github.com/dawonn/vectornav/blob/6824e8b668b889a76214636cbc00a21c0b208a29/src/main.cpp#L725-L749
   corrected_stamp = arrival_stamp;
