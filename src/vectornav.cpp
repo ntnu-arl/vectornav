@@ -112,10 +112,10 @@ namespace vectornav
     logger_->debug("Setting up binary output registers");
     vn::sensors::BinaryOutputRegister bor(
         async_mode_, async_rate_divisor_,
-        COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE |
+        COMMONGROUP_TIMESTARTUP | COMMONGROUP_TIMESYNCIN | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE |
             COMMONGROUP_ACCEL | COMMONGROUP_MAGPRES |
             (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT
-                                  : COMMONGROUP_NONE) |
+                           : COMMONGROUP_NONE) |
             (publish_uncomp_imu_ ? COMMONGROUP_IMU : COMMONGROUP_NONE),
         TIMEGROUP_NONE, publish_uncomp_mag_ ? IMUGROUP_UNCOMPMAG : IMUGROUP_NONE,
         GPSGROUP_NONE, ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
@@ -167,7 +167,15 @@ namespace vectornav
 
     // Get corrected timestamp
     ros::Time corrected_stamp;
-    CorrectTimestamp(arrival_stamp, corrected_stamp);
+
+    // The system time since startup measured in nano seconds. The time since startup is based upon the internal
+    // TXCO oscillator for the MCU. The accuracy of the internal TXCO is +/- 20ppm (-40C to 85C).
+    uint64_t startup_time = cd.timeStartup();
+
+    // The time since the last SyncIn trigger event expressed in nano seconds. 
+    uint64_t sync_in_time = cd.timeSyncIn();
+
+    CorrectTimestamp(arrival_stamp, startup_time, sync_in_time, corrected_stamp);
 
     logger_->trace("Publishing parsed data");
     // IMU
@@ -219,7 +227,7 @@ namespace vectornav
     }
   }
 
-  void VectorNav::CorrectTimestamp(const ros::Time& arrival_stamp, ros::Time& corrected_stamp)
+  void VectorNav::CorrectTimestamp(const ros::Time& arrival_stamp, uint64_t startup_time, uint64_t sync_in_time, ros::Time& corrected_stamp)
   {
     // TODO
     corrected_stamp = arrival_stamp;
