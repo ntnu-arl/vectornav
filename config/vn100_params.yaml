@@ -51,21 +51,21 @@ log_directory: /tmp/vectornav/
 log_level: 0
 
 # Linear Accleration Covariance
-linear_accel_covariance: [0.01, 0.0, 0.0
-                          0.0, 0.01, 0.0
+linear_accel_covariance: [0.01, 0.0, 0.0,
+                          0.0, 0.01, 0.0,
                           0.0, 0.0, 0.01]
 
 # Angular Velocity Covariance
-angular_vel_covariance: [0.01, 0.0, 0.0
-                         0.0, 0.01, 0.0
+angular_vel_covariance: [0.01, 0.0, 0.0,
+                         0.0, 0.01, 0.0,
                          0.0, 0.0, 0.01]
 
 # Orientation Covariance
-orientation_covariance: [0.01, 0.0, 0.0
-                         0.0, 0.01, 0.0
+orientation_covariance: [0.01, 0.0, 0.0,
+                         0.0, 0.01, 0.0,
                          0.0, 0.0, 0.01]
 
 # Magnetic Field Covariance
-magnetic_covariance: [0.01, 0.0, 0.0
-                      0.0, 0.01, 0.0
-                      0.0, 0.0, 0.01]
+magnetic_field_covariance: [0.01, 0.0, 0.0,
+                            0.0, 0.01, 0.0,
+                            0.0, 0.0, 0.01]
