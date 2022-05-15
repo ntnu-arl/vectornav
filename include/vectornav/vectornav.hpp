@@ -19,9 +19,6 @@
 #include <sensor_msgs/Temperature.h>
 #include <sensor_msgs/FluidPressure.h>
 
-// Config
-#include "vectornav/config.hpp"
-
 using namespace vn::protocol::uart;
 
 namespace vectornav
@@ -29,19 +26,39 @@ namespace vectornav
   class VectorNav
   {
    private:
-    ros::NodeHandle pnh_;
+    vn::sensors::VnSensor sensor_;
+
+    // Publishers
     ros::Publisher pub_imu_;
     ros::Publisher pub_uncomp_imu_;
     ros::Publisher pub_mag_;
     ros::Publisher pub_uncomp_mag_;
     ros::Publisher pub_pres_;
     ros::Publisher pub_temp_;
-    vn::sensors::VnSensor sensor_;
-    const Config config_;
+
+    // Parameters
+    std::string port_ = "/dev/ttyUSB0";
+    uint32_t baud_rate_ = 921600;
+    uint16_t async_mode_ = 2;
+    uint16_t async_rate_divisor_ = 4;
+    // Configuration for the sensor being triggered by an external source
+    bool is_triggered_ = false;
+    uint16_t sync_in_skip_factor_ = 0;
+    // Configuration for the sensor triggering external objects
+    bool is_triggering_ = true;
+    uint16_t sync_out_skip_factor_ = 39;
+    uint32_t sync_out_pulse_width_ = 1.0e+9;
+    bool publish_uncomp_imu_ = false;
+    bool publish_uncomp_mag_ = false;
+    std::string frame_id_ = "imu_link";
+    float temp_variance_ = 0.1;
+    float pres_variance_ = 0.1;
 
    public:
-    explicit VectorNav(const Config& config, ros::NodeHandle& pnh);
+    VectorNav(ros::NodeHandle& pnh);
     ~VectorNav();
+    void ReadParams(ros::NodeHandle& pnh);
+    void VerifyParams();
     void SetupSensor();
     void StopSensor();
     void SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketReceivedHandler handler);

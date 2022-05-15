@@ -8,29 +8,68 @@
 
 namespace vectornav
 {
-  VectorNav::VectorNav(const Config& config, ros::NodeHandle& pnh) : config_(config), pnh_(pnh)
+  VectorNav::VectorNav(ros::NodeHandle& pnh)
   {
-    // Print the config
-    std::cout << config_.toString() << std::endl;
+    // Get parameters
+    ReadParams(pnh);
+    VerifyParams();
 
     // Setup Publishers
-    pub_imu_ = pnh_.advertise<sensor_msgs::Imu>("imu", 1000, false);
-    pub_uncomp_imu_ = pnh_.advertise<sensor_msgs::Imu>("uncomp_imu", 1000, false);
-    pub_mag_ = pnh_.advertise<sensor_msgs::MagneticField>("magetic_field", 1000, false);
+    pub_imu_ = pnh.advertise<sensor_msgs::Imu>("imu", 1000, false);
+    pub_uncomp_imu_ = pnh.advertise<sensor_msgs::Imu>("uncomp_imu", 1000, false);
+    pub_mag_ = pnh.advertise<sensor_msgs::MagneticField>("magetic_field", 1000, false);
     pub_uncomp_mag_ =
-        pnh_.advertise<sensor_msgs::MagneticField>("uncomp_magetic_field", 1000, false);
-    pub_temp_ = pnh_.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
-    pub_pres_ = pnh_.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
+        pnh.advertise<sensor_msgs::MagneticField>("uncomp_magetic_field", 1000, false);
+    pub_temp_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
+    pub_pres_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
   }
 
   VectorNav::~VectorNav() {}
+
+  void VectorNav::ReadParams(ros::NodeHandle& pnh)
+  {
+    // Read parameters
+    pnh.param<std::string>("port", port_, "/dev/ttyUSB0");
+    int i_param;
+    pnh.param<int>("baud_rate", i_param, 115200);
+    baud_rate_ = static_cast<uint32_t>(i_param);
+    pnh.param<int>("async_mode", i_param, 2);
+    async_mode_ = static_cast<AsyncMode>(i_param);
+    pnh.param<int>("async_rate_divisor", i_param, 4);
+    async_rate_divisor_ = static_cast<uint16_t>(i_param);
+    pnh.param<bool>("is_triggered", is_triggered_, false);
+    pnh.param<int>("sync_in_skip_factor", i_param, 0);
+    sync_in_skip_factor_ = static_cast<uint16_t>(i_param);
+    pnh.param<bool>("is_triggering", is_triggering_, true);
+    pnh.param<int>("sync_out_skip_factor", i_param, 39);
+    sync_out_skip_factor_ = static_cast<uint16_t>(i_param);
+    pnh.param<int>("sync_out_pulse_width", i_param, 1.0e+9);
+    sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
+    pnh.param<bool>("publish_uncomp_imu", publish_uncomp_imu_, false);
+    pnh.param<bool>("publish_uncomp_mag", publish_uncomp_mag_, false);
+    pnh.param<std::string>("frame_id", frame_id_, "imu_link");
+    pnh.param<float>("temp_variance", temp_variance_, 0.1);
+    pnh.param<float>("pres_variance", pres_variance_, 0.1);
+  }
+
+  void VectorNav::VerifyParams()
+  {
+    assert(std::find(sensor_->SupportedBaudRates().begin(),
+                     sensor_->SupportedBaudRates().end(),
+                     baud_rate_) != sensor_->SupportedBaudRates().end());
+    assert(async_mode_ >= AsyncMode::ASYNCMODE_NONE &&
+           async_mode_ <= AsyncMode::ASYNCMODE_BOTH);
+    assert(frame_id_.size() > 0);
+    assert(temp_variance_ > 0);
+    assert(pres_variance_ > 0);
+  }
 
   void VectorNav::SetupSensor()
   {
     // Should try to set the baud rate instead of blindly trusting the baud rate to be available
     // Connect to sensor
-    ROS_INFO("VectorNav: Connecting to sensor at %s @ %d", config_.port.c_str(), config_.baud_rate);
-    sensor_.connect(config_.port, config_.baud_rate);
+    ROS_INFO("VectorNav: Connecting to sensor at %s @ %d", port_.c_str(), baud_rate_);
+    sensor_.connect(port_, baud_rate_);
 
     if (!sensor_.verifySensorConnectivity())
     {
@@ -41,7 +80,7 @@ namespace vectornav
 
     PrintSensorInfo();
 
-    // Feature: Factory data reset/ reset the sensor before any configuration change is made. This
+    // TODO: Feature: Factory data reset/ reset the sensor before any configuration change is made. This
     // way only the configuration changes available thorough the driver will be avaialble. To be
     // checked whether this is feasible and sensible.
 
@@ -50,13 +89,13 @@ namespace vectornav
 
     // Setup using the binary output registers. This is significantly faster than using ASCII output
     vn::sensors::BinaryOutputRegister bor(
-        config_.async_port, config_.async_rate_divisor,
+        async_mode_, async_rate_divisor_,
         COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE |
             COMMONGROUP_ACCEL | COMMONGROUP_MAGPRES |
-            (config_.is_triggered ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT
+            (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT
                                   : COMMONGROUP_NONE) |
-            (config_.publish_uncomp_imu ? COMMONGROUP_IMU : COMMONGROUP_NONE),
-        TIMEGROUP_NONE, config_.publish_uncomp_mag ? IMUGROUP_UNCOMPMAG : IMUGROUP_NONE,
+            (publish_uncomp_imu_ ? COMMONGROUP_IMU : COMMONGROUP_NONE),
+        TIMEGROUP_NONE, publish_uncomp_mag_ ? IMUGROUP_UNCOMPMAG : IMUGROUP_NONE,
         GPSGROUP_NONE, ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
     // Note: Time since startup and time since syncin are measured in nanoseconds
@@ -67,17 +106,16 @@ namespace vectornav
 
     // Use only one binary output register to minimize data usage. The other registers are
     // explicitly disabled so that they dont get used due to a configuration already on the sensor
-    // F: Factory reset before usage?
     sensor_.writeBinaryOutput1(bor);
     sensor_.writeBinaryOutput2(bor_none);
     sensor_.writeBinaryOutput3(bor_none);
 
     // Setup synchonization
     sensor_.writeSynchronizationControl(
-        config_.is_triggered ? SYNCINMODE_IMU : SYNCINMODE_COUNT, SYNCINEDGE_RISING,
-        config_.sync_in_skip_factor,
-        config_.is_triggering ? SYNCOUTMODE_ITEMSTART : SYNCOUTMODE_NONE, SYNCOUTPOLARITY_POSITIVE,
-        config_.sync_out_skip_factor, config_.sync_out_pulse_width);
+        is_triggered_ ? SYNCINMODE_IMU : SYNCINMODE_COUNT, SYNCINEDGE_RISING,
+        sync_in_skip_factor_,
+        is_triggering_ ? SYNCOUTMODE_ITEMSTART : SYNCOUTMODE_NONE, SYNCOUTPOLARITY_POSITIVE,
+        sync_out_skip_factor_, sync_out_pulse_width_);
   }
 
   void VectorNav::StopSensor()
@@ -112,7 +150,7 @@ namespace vectornav
     }
 
     // Uncompensated IMU
-    if (pub_uncomp_imu_.getNumSubscribers() && config_.publish_uncomp_imu)
+    if (pub_uncomp_imu_.getNumSubscribers() && publish_uncomp_imu_)
     {
       sensor_msgs::Imu msg;
       PopulateImuMsg(msg, cd, corrected_stamp, true);
@@ -128,7 +166,7 @@ namespace vectornav
     }
 
     // Uncompensated Magnetic Field
-    if (pub_uncomp_mag_.getNumSubscribers() && config_.publish_uncomp_mag)
+    if (pub_uncomp_mag_.getNumSubscribers() && publish_uncomp_mag_)
     {
       sensor_msgs::MagneticField msg;
       PopulateMagMsg(msg, cd, corrected_stamp, true);
@@ -154,7 +192,7 @@ namespace vectornav
 
   void VectorNav::CorrectTimestamp(const ros::Time& arrival_stamp, ros::Time& corrected_stamp)
   {
-    // To be written
+    // TODO
     corrected_stamp = arrival_stamp;
   }
 
@@ -170,7 +208,7 @@ namespace vectornav
                                  const ros::Time& stamp, bool uncomp)
   {
     msg.header.stamp = stamp;
-    msg.header.frame_id = config_.frame_id;
+    msg.header.frame_id = frame_id_;
 
     vn::math::vec4f q = cd.quaternion();
     vn::math::vec3f acc, omega;  // m/s^2, rad/s
@@ -212,7 +250,7 @@ namespace vectornav
                                  const ros::Time& stamp, bool uncomp)
   {
     msg.header.stamp = stamp;
-    msg.header.frame_id = config_.frame_id;
+    msg.header.frame_id = frame_id_;
     vn::math::vec3f mag;  // gauss
     if (uncomp)
     {
@@ -233,17 +271,17 @@ namespace vectornav
                                   const ros::Time& stamp)
   {
     msg.header.stamp = stamp;
-    msg.header.frame_id = config_.frame_id;
+    msg.header.frame_id = frame_id_;
     msg.temperature = cd.temperature();  // Celsius
-    msg.variance = config_.temp_variance;
+    msg.variance = temp_variance_;
   }
 
   void VectorNav::PopulatePresMsg(sensor_msgs::FluidPressure& msg, vn::sensors::CompositeData& cd,
                                   const ros::Time& stamp)
   {
     msg.header.stamp = stamp;
-    msg.header.frame_id = config_.frame_id;
+    msg.header.frame_id = frame_id_;
     msg.fluid_pressure = cd.pressure();  // kPa
-    msg.variance = config_.pres_variance;
+    msg.variance = pres_variance_;
   }
 }  // namespace vectornav
