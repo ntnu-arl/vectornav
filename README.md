@@ -4,6 +4,14 @@ A minimal driver for VectorNav IMUs
 
 ## Setup
 
+Setup dependancies
+
+```bash
+sudo apt-get install libspdlog-dev
+```
+
+Setup build
+
 ```bash
 mkdir -p catkin_ws/src
 cd catkin_ws/src

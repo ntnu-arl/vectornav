@@ -14,7 +14,23 @@ namespace vectornav
     ReadParams(pnh);
     VerifyParams();
 
+    // Setup logging sinks
+    logger_console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    logger_console_sink_->set_level(log_level_);
+    logger_file_sink_ = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
+    log_directory_ + ros::this_node::getName(), true);
+    logger_file_sink_->set_level(log_level_);
+
+    // Create logger
+    std::vector<spdlog::sink_ptr> sinks;
+    sinks.push_back(logger_console_sink_);
+    sinks.push_back(logger_file_sink_);
+    logger_ = std::make_shared<spdlog::logger>("logger", sinks.begin(), sinks.end());
+    logger_->set_level(log_level_);
+    logger_->flush_on(log_level_);
+
     // Setup Publishers
+    logger_->debug("Set up publishers start");
     pub_imu_ = pnh.advertise<sensor_msgs::Imu>("imu", 1000, false);
     pub_uncomp_imu_ = pnh.advertise<sensor_msgs::Imu>("uncomp_imu", 1000, false);
     pub_mag_ = pnh.advertise<sensor_msgs::MagneticField>("magetic_field", 1000, false);
@@ -22,6 +38,7 @@ namespace vectornav
         pnh.advertise<sensor_msgs::MagneticField>("uncomp_magetic_field", 1000, false);
     pub_temp_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
     pub_pres_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
+    logger_->debug("Set up publishers end");
   }
 
   VectorNav::~VectorNav() {}
@@ -50,6 +67,9 @@ namespace vectornav
     pnh.param<std::string>("frame_id", frame_id_, "imu_link");
     pnh.param<float>("temp_variance", temp_variance_, 0.1);
     pnh.param<float>("pres_variance", pres_variance_, 0.1);
+    pnh.param<std::string>("log_directory", log_directory_, "/tmp/vectornav/");
+    pnh.param<int>("log_level", i_param, 0);
+    log_level_ = static_cast<spdlog::level::level_enum>(i_param);
   }
 
   void VectorNav::VerifyParams()
@@ -68,15 +88,15 @@ namespace vectornav
   {
     // Should try to set the baud rate instead of blindly trusting the baud rate to be available
     // Connect to sensor
-    ROS_INFO("VectorNav: Connecting to sensor at %s @ %d", port_.c_str(), baud_rate_);
+    logger_->info("Connecting to sensor at {} with baud rate {}", port_, baud_rate_);
     sensor_.connect(port_, baud_rate_);
 
     if (!sensor_.verifySensorConnectivity())
     {
-      ROS_FATAL("Sensor connectivity test failed");
+      logger_->critical("Sensor connectivity check failed");
       return;
     }
-    ROS_INFO("VectorNav: Sensor connected");
+    logger_->info("Sensor connectivity check passed");
 
     PrintSensorInfo();
 
@@ -85,9 +105,11 @@ namespace vectornav
     // checked whether this is feasible and sensible.
 
     // Stop any sort of data coming from the sensor before writing a config
+    logger_->debug("Turning off data streaming");
     sensor_.writeAsyncDataOutputType(VNOFF);
 
     // Setup using the binary output registers. This is significantly faster than using ASCII output
+    logger_->debug("Setting up binary output registers");
     vn::sensors::BinaryOutputRegister bor(
         async_mode_, async_rate_divisor_,
         COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE |
@@ -111,6 +133,7 @@ namespace vectornav
     sensor_.writeBinaryOutput3(bor_none);
 
     // Setup synchonization
+    logger_->debug("Setting up synchronization");
     sensor_.writeSynchronizationControl(
         is_triggered_ ? SYNCINMODE_IMU : SYNCINMODE_COUNT, SYNCINEDGE_RISING,
         sync_in_skip_factor_,
@@ -121,6 +144,7 @@ namespace vectornav
   void VectorNav::StopSensor()
   {
     // Might need sleeps here to ensure the connection is closed properly - Need to check
+    logger_->info("Disconnecting from sensor");
     sensor_.unregisterAsyncPacketReceivedHandler();
     sensor_.disconnect();
   }
@@ -129,18 +153,23 @@ namespace vectornav
       vn::sensors::VnSensor::AsyncPacketReceivedHandler handler)
   {
     // Setup callback
+    logger_->debug("Setting up async message callback");
     sensor_.registerAsyncPacketReceivedHandler(this, handler);
   }
 
   void VectorNav::BinaryAsyncMessageCallback(Packet& p, size_t index)
   {
     const ros::Time arrival_stamp = ros::Time::now();
+    logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
+
+    logger_->trace("Parsing binary async message");
     vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
 
     // Get corrected timestamp
     ros::Time corrected_stamp;
     CorrectTimestamp(arrival_stamp, corrected_stamp);
 
+    logger_->trace("Publishing parsed data");
     // IMU
     if (pub_imu_.getNumSubscribers())
     {
@@ -194,14 +223,13 @@ namespace vectornav
   {
     // TODO
     corrected_stamp = arrival_stamp;
+    logger_->trace("Arrival timestamp: {}\nCorrected timestamp: {}", arrival_stamp.toSec(), corrected_stamp.toSec());
   }
 
   void VectorNav::PrintSensorInfo()
   {
-    ROS_INFO("VectorNav: Model Number: %s", sensor_.readModelNumber().c_str());
-    ROS_INFO("VectorNav: Firmware Version: %s", sensor_.readFirmwareVersion().c_str());
-    ROS_INFO("VectorNav: Hardware Revision: %d", sensor_.readHardwareRevision());
-    ROS_INFO("VectorNav: Serial Number: %d", sensor_.readSerialNumber());
+    logger_->info("Sensor information:\n\tModel Number: {}\n\tSerial Number: {}\n\tFirmware Version: {}\n\tHardware Revision: {}",
+                  sensor_.readModelNumber(), sensor_.readSerialNumber(), sensor_.readFirmwareVersion(), sensor_.readHardwareRevision());
   }
 
   void VectorNav::PopulateImuMsg(sensor_msgs::Imu& msg, vn::sensors::CompositeData& cd,
@@ -219,6 +247,7 @@ namespace vectornav
       // onboard Kalman filter.
       acc = cd.accelerationUncompensated();
       omega = cd.angularRateUncompensated();
+      logger_->trace("Populating uncompensated IMU message");
     }
     else
     {
@@ -227,6 +256,7 @@ namespace vectornav
       // INS Kalman filter.
       acc = cd.acceleration();
       omega = cd.angularRate();
+      logger_->trace("Populating IMU message");
     }
 
     // Allow for transformation to different frame
@@ -258,11 +288,13 @@ namespace vectornav
       //  stored in flash), and the user compensation, however it is not compensated by the onboard
       //  Hard/Soft Iron estimator.
       mag = cd.magneticUncompensated();
+      logger_->trace("Populating uncompensated Magnetic Field message");
     }
     else
     {
       // This measurement has been corrected for hard/soft iron corrections (if enabled).
       mag = cd.magnetic();
+      logger_->trace("Populating Magnetic Field message");
     }
     // Add covariance from config. is it possible to get this from sensor?
   }
@@ -270,6 +302,7 @@ namespace vectornav
   void VectorNav::PopulateTempMsg(sensor_msgs::Temperature& msg, vn::sensors::CompositeData& cd,
                                   const ros::Time& stamp)
   {
+    logger_->trace("Populating Temperature message");
     msg.header.stamp = stamp;
     msg.header.frame_id = frame_id_;
     msg.temperature = cd.temperature();  // Celsius
@@ -279,6 +312,7 @@ namespace vectornav
   void VectorNav::PopulatePresMsg(sensor_msgs::FluidPressure& msg, vn::sensors::CompositeData& cd,
                                   const ros::Time& stamp)
   {
+    logger_->trace("Populating Pressure message");
     msg.header.stamp = stamp;
     msg.header.frame_id = frame_id_;
     msg.fluid_pressure = cd.pressure();  // kPa
