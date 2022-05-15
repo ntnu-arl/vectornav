@@ -37,22 +37,22 @@ namespace vectornav
     ros::Publisher pub_temp_;
 
     // Parameters
-    std::string port_ = "/dev/ttyUSB0";
-    uint32_t baud_rate_ = 921600;
-    uint16_t async_mode_ = 2;
-    uint16_t async_rate_divisor_ = 4;
+    std::string port_;
+    uint32_t baud_rate_;
+    uint16_t async_mode_;
+    uint16_t async_rate_divisor_;
     // Configuration for the sensor being triggered by an external source
-    bool is_triggered_ = false;
-    uint16_t sync_in_skip_factor_ = 0;
+    bool is_triggered_;
+    uint16_t sync_in_skip_factor_;
     // Configuration for the sensor triggering external objects
-    bool is_triggering_ = true;
-    uint16_t sync_out_skip_factor_ = 39;
-    uint32_t sync_out_pulse_width_ = 1.0e+9;
-    bool publish_uncomp_imu_ = false;
-    bool publish_uncomp_mag_ = false;
-    std::string frame_id_ = "imu_link";
-    float temp_variance_ = 0.1;
-    float pres_variance_ = 0.1;
+    bool is_triggering_;
+    uint16_t sync_out_skip_factor_;
+    uint32_t sync_out_pulse_width_;
+    bool publish_uncomp_imu_;
+    bool publish_uncomp_mag_;
+    std::string frame_id_;
+    float temp_variance_;
+    float pres_variance_;
 
    public:
     VectorNav(ros::NodeHandle& pnh);
