@@ -18,7 +18,7 @@ VectorNav::VectorNav(ros::NodeHandle & pnh)
   logger_console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   logger_console_sink_->set_level(log_level_);
   logger_file_sink_ = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-    log_directory_ + ros::this_node::getName(), true);
+    log_directory_ + ros::this_node::getName() + ".log", true);
   logger_file_sink_->set_level(log_level_);
 
   // Create logger
