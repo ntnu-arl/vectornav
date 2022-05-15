@@ -4,9 +4,6 @@ project(vectornav)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(glog REQUIRED libglog)
-
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
@@ -25,7 +22,6 @@ include_directories(
   include
   vnproglib/cpp/include
   ${catkin_INCLUDE_DIRS}
-  ${glog_INCLUDE_DIRS}
 )
 
 add_executable(vectornav_node src/vectornav_node.cpp src/vectornav.cpp)
@@ -33,5 +29,4 @@ add_executable(vectornav_node src/vectornav_node.cpp src/vectornav.cpp)
 target_link_libraries(vectornav_node
   ${catkin_LIBRARIES}
   libvncxx
-  ${glog_LIBRARIES}
 )
