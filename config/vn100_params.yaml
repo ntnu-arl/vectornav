@@ -9,7 +9,7 @@ baud_rate: 921600
 # 1 - Port 1
 # 2 - Port 2
 # 3 - Both ports
-async_port: 2
+async_mode: 2
 
 # imu rate (800 Hz) divided by this value gives the output rate
 async_rate_divisor: 4
