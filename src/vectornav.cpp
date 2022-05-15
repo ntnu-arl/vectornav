@@ -128,7 +128,7 @@ void VectorNav::SetupSensor()
 
   // TODO: Feature (parameterized)
   // Factory data reset/reset the sensor before any configuration change is made. This
-  // way only the configuration changes available thorough the driver will be avaialble.
+  // way only the configuration changes available through the driver will be avaialble.
 
   // Stop any sort of data coming from the sensor before writing a config
   logger_->debug("Turning off data streaming");
