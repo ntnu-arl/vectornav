@@ -2,12 +2,12 @@
 // All rights reserved.
 
 // This source code is licensed under the BSD-style license found in the
-// LICENSE file in the root directory of this source tree. 
+// LICENSE file in the root directory of this source tree.
 
-#include "vectornav/vectornav.hpp"
 #include "vectornav/async_callback_wrapper.hpp"
+#include "vectornav/vectornav.hpp"
 
-int main(int argc, char **argv)
+int main(int argc, char ** argv)
 {
   ros::init(argc, argv, "vectornav_node");
   ros::NodeHandle pnh("~");
