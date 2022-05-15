@@ -176,6 +176,8 @@ void VectorNav::SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketRece
   // Setup callback
   logger_->debug("Setting up async message callback");
   sensor_.registerAsyncPacketReceivedHandler(this, handler);
+  logger_->debug("Async message callback setup");
+  logger_->info("Ready to receive data");
 }
 
 void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
