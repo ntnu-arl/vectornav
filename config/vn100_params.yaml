@@ -9,6 +9,8 @@ baud_rate: 921600
 # 1 - Port 1
 # 2 - Port 2
 # 3 - Both ports
+# The cable from OEM connects on Port 1
+# A custom cable with an FTDI converter on pins 8 and 9 on the rugged version of the VN100 connects on Port 2
 async_mode: 2
 
 # imu rate (800 Hz) divided by this value gives the output rate
