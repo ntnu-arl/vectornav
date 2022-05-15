@@ -28,7 +28,7 @@ catkin build
 ```bash
 cd catkin_ws/src
 sudo cp vectornav/udev/* /etc/udev/rules.d/
-sudo udevadm control --reload
+sudo udevadm control --reload-rules && udevadm trigger
 ```
 
 Note:
