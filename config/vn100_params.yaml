@@ -44,6 +44,12 @@ temp_variance: 0.1
 # Variance of the pressure measurements
 pressure_variance: 0.1
 
+# Location to store logs
+log_directory: /tmp/vectornav/
+
+# Log level for the logger
+log_level: 0
+
 # Linear Accleration Covariance
 linear_accel_covariance: [0.01, 0.0, 0.0
                           0.0, 0.01, 0.0
