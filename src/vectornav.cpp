@@ -229,7 +229,12 @@ namespace vectornav
 
   void VectorNav::CorrectTimestamp(const ros::Time& arrival_stamp, uint64_t startup_time, uint64_t sync_in_time, ros::Time& corrected_stamp)
   {
-    // TODO
+    // TODO: Implement this
+    // Possible timestamp corrections (which method to use could be a parameter):
+    // 1. Do nothing - Host timestamping (inaccurate due to transmission and processing delays)
+    // 2. Get the ros time and time since startup from the sensor and use that as reference
+    // 3. Synchronize with an external micro controller that is triggering the sensor and use the sync in time and the known triggers to correct the time
+    // 4. Assume that the sensor has an almost constant rate and correct the timestamp based on the timestamp that is expected to arrive next - This is implemented here: https://github.com/dawonn/vectornav/blob/6824e8b668b889a76214636cbc00a21c0b208a29/src/main.cpp#L725-L749
     corrected_stamp = arrival_stamp;
     logger_->trace("Arrival timestamp: {}\nCorrected timestamp: {}", arrival_stamp.toSec(), corrected_stamp.toSec());
   }
