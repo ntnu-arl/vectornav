@@ -194,7 +194,9 @@ void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
   uint64_t startup_time = cd.timeStartup();
 
   // The time since the last SyncIn trigger event expressed in nano seconds.
-  uint64_t sync_in_time = cd.timeSyncIn();
+  uint64_t sync_in_time;
+  if (cd.hasTimeSyncIn())
+    sync_in_time = cd.timeSyncIn();
 
   // Get corrected timestamp
   ros::Time corrected_stamp = CorrectTimestamp(arrival_stamp, startup_time, sync_in_time);
