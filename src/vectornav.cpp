@@ -138,7 +138,7 @@ void VectorNav::SetupSensor()
   logger_->debug("Setting up binary output registers");
   vn::sensors::BinaryOutputRegister bor(
     async_mode_, async_rate_divisor_,
-    COMMONGROUP_TIMESTARTUP | COMMONGROUP_TIMESYNCIN | COMMONGROUP_QUATERNION |
+    COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION |
       COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_MAGPRES |
       (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT : COMMONGROUP_NONE) |
       (publish_uncomp_imu_ ? COMMONGROUP_IMU : COMMONGROUP_NONE),
