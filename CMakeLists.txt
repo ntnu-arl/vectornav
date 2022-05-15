@@ -15,7 +15,7 @@ add_subdirectory(vnproglib/cpp libvncxx)
 
 catkin_package(
  INCLUDE_DIRS include vnproglib/cpp/include
-#  LIBRARIES vectornav
+ LIBRARIES vectornav spdlog::spdlog
  CATKIN_DEPENDS roscpp sensor_msgs
 #  DEPENDS system_lib
 )
@@ -26,9 +26,12 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(vectornav_node src/vectornav_node.cpp src/vectornav.cpp)
+add_library(vectornav src/vectornav.cpp)
+
+add_executable(vectornav_node src/vectornav_node.cpp)
 
 target_link_libraries(vectornav_node
+  vectornav
   ${catkin_LIBRARIES}
   libvncxx
   spdlog::spdlog
