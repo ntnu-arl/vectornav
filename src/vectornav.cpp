@@ -116,7 +116,15 @@ void VectorNav::SetupSensor()
   // Should try to set the baud rate instead of blindly trusting the baud rate to be available
   // Connect to sensor
   logger_->info("Connecting to sensor at {} with baud rate {}", port_, baud_rate_);
-  sensor_.connect(port_, baud_rate_);
+  try
+  {
+    sensor_.connect(port_, baud_rate_);
+  }
+  catch(const vn::permission_denied& e)
+  {
+    logger_->critical("Permission denied: {}. Did you restart the system after loading the new rules?", e.what());
+    throw;
+  }
 
   if (!sensor_.verifySensorConnectivity()) {
     logger_->critical("Sensor connectivity check failed");

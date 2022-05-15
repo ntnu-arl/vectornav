@@ -35,7 +35,8 @@ Note:
 
 1. The USB latency timer should be set to 1 for the IMU to avoid the [bunching up of IMU messages](https://github.com/ntnu-arl/vectornav/issues/5). The udev rules automatically does this for you.
 2. The attributes in the udev rule here may not match the attributes for your specific ftdi-usb converter. You can use `udevadm info --attribute-walk /dev/ttyUSB0` (change `/dev/ttyUSB0` to the port that the converter is connected to) to find the values that you can enter in the udev rule and `udevadm test $(udevadm info --query=path --name=/dev/ttyUSB0)` to test whether the new rule works as expected.
-3. If the udev rules do not load, you may need to restart the computer. This only needs to be done once during the setup.
+3. You may need to unplug and replug the IMU to make the udev rule take effect.
+4. If the udev rules do not load, you may need to restart the computer. This only needs to be done once during the setup.
 
 ### Setting up the parameters
 
