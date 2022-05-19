@@ -37,6 +37,8 @@ VectorNav::VectorNav(ros::NodeHandle & pnh)
   pub_uncomp_mag_ = pnh.advertise<sensor_msgs::MagneticField>("uncomp_magetic_field", 1000, false);
   pub_temp_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
   pub_pres_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
+
+  receiving_data_ = false;
 }
 
 VectorNav::~VectorNav() {}
@@ -191,6 +193,11 @@ void VectorNav::SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketRece
 void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
 {
   const ros::Time arrival_stamp = ros::Time::now();
+  if (!receiving_data_)
+  {
+    logger_->info("Receiving data");
+    receiving_data_ = true;
+  }
   logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
 
   logger_->trace("Parsing binary async message");

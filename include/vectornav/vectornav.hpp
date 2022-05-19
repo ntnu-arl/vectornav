@@ -70,6 +70,9 @@ private:
   std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> logger_console_sink_;
   std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logger_file_sink_;
 
+  // Flags
+  bool receiving_data_;
+
 public:
   VectorNav(ros::NodeHandle & pnh);
   ~VectorNav();
