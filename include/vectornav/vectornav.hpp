@@ -42,6 +42,7 @@ private:
   ros::Publisher pub_temp_;
 
   // Parameters
+  vn::sensors::VnSensor::Family sensor_family_;
   std::string port_;
   uint32_t baud_rate_;
   uint16_t async_mode_;
