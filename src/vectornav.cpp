@@ -46,8 +46,10 @@ VectorNav::~VectorNav() {}
 void VectorNav::ReadParams(ros::NodeHandle & pnh)
 {
   // Read parameters
-  pnh.param<std::string>("port", port_, "/dev/ttyUSB0");
   int i_param;
+  pnh.param<int>("sensor_family", i_param, 0);
+  sensor_family_ = static_cast<vn::sensors::VnSensor::Family>(i_param);
+  pnh.param<std::string>("port", port_, "/dev/ttyUSB0");
   pnh.param<int>("baud_rate", i_param, 115200);
   baud_rate_ = static_cast<uint32_t>(i_param);
   pnh.param<int>("async_mode", i_param, 2);
@@ -115,17 +117,53 @@ void VectorNav::VerifyParams()
 
 void VectorNav::SetupSensor()
 {
-  // Should try to set the baud rate instead of blindly trusting the baud rate to be available
-  // Connect to sensor
-  logger_->info("Connecting to sensor at {} with baud rate {}", port_, baud_rate_);
-  try
-  {
-    sensor_.connect(port_, baud_rate_);
-  }
-  catch(const vn::permission_denied& e)
-  {
-    logger_->critical("Permission denied: {}. Did you restart the system after loading the new rules?", e.what());
-    throw;
+  // Attempt to connect to the sensor using the specified port and the supported baud rates.
+  // This is because the sensor might be at a baud rate different from the one specified in the parameter file.
+  std::vector<uint32_t> supported_baud_rates = sensor_.supportedBaudrates();
+  // Required baud rate is inserted first to be the first try and speed up initialization
+  supported_baud_rates.insert(supported_baud_rates.begin(), baud_rate_);
+  sensor_.setResponseTimeoutMs(1000);  // Wait for up to 1s for a response
+  sensor_.setRetransmitDelayMs(50);    // Retransmit every 50ms
+
+
+  // Iterate through the supported baud rates and try to connect to the sensor.
+  // Once connected, try to change to the desired baud rate.
+  for (const uint32_t & br : supported_baud_rates) {
+    // The VN100 family does not support 12800 baud rate
+    if (br == 128000 && sensor_family_ == vn::sensors::VnSensor::Family::VnSensor_Family_Vn100)
+      continue;
+
+    logger_->debug("Trying baud rate {}", br);
+    try {
+      sensor_.connect(port_, br);
+      sensor_.changeBaudRate(baud_rate_);
+      logger_->info("Connected to VectorNav sensor at {} with baud rate {}", port_, br);
+      if (baud_rate_ != br) {
+        logger_->info("Baud rate changed from {} to {}", br, baud_rate_);
+      }
+      break;
+    } catch (const vn::permission_denied & e) {
+      // Rules error
+      logger_->critical(
+        "Permission denied: {}. Did you restart the system after loading the new rules?", e.what());
+      throw;
+    } catch (const vn::timeout & e) {
+      // Disconnect if any other error occurs
+      sensor_.disconnect();
+      logger_->debug(
+        "Failed to connect to VectorNav sensor at {} with baud rate {}. Retrying with other "
+        "supported baud rates",
+        port_, br);
+      ros::Duration(0.5).sleep();
+    }
+
+    // Reached the end of the supported baud rates and failed to connect
+    if (&br == &supported_baud_rates.back()) {
+      logger_->error(
+        "Failed to connect to VectorNav sensor at {} with any of the supported baud rates {}",
+        port_, fmt::join(supported_baud_rates, ", "));
+      throw std::runtime_error("Failed to connect to VectorNav sensor");
+    }
   }
 
   if (!sensor_.verifySensorConnectivity()) {
