@@ -61,3 +61,4 @@ The default output from the VN100 is in the NED coordinate system.
 For any questions, please contact
 
 - [Nikhil Khedekar](mailto:nikhil.v.khedekar@ntnu.no)
+- [Morten Nissov](mailto:morten.nissov@ntnu.no)
