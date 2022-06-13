@@ -18,6 +18,8 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
 #include <sensor_msgs/Temperature.h>
+#include <std_msgs/UInt32.h>
+#include <std_srvs/Empty.h>
 
 // spdlog
 #include <spdlog/sinks/basic_file_sink.h>
@@ -40,6 +42,10 @@ private:
   ros::Publisher pub_uncomp_mag_;
   ros::Publisher pub_pres_;
   ros::Publisher pub_temp_;
+  ros::Publisher pub_sync_out_count_;
+
+  // Services
+  ros::ServiceServer srv_reset_;
 
   // Parameters
   vn::sensors::VnSensor::Family sensor_family_;
@@ -54,6 +60,8 @@ private:
   bool is_triggering_;
   uint16_t sync_out_skip_factor_;
   uint32_t sync_out_pulse_width_;
+  bool publish_sync_out_count_on_change_;
+  uint32_t sync_out_count_;
   bool publish_uncomp_imu_;
   bool publish_uncomp_mag_;
   std::string frame_id_;
@@ -65,6 +73,10 @@ private:
   boost::array<double, 9ul> angular_vel_covariance_;
   boost::array<double, 9ul> orientation_covariance_;
   boost::array<double, 9ul> mag_covariance_;
+  std::array<float, 3> mag_ref_;
+  std::array<float, 3> gravity_ref_;
+  bool write_to_flash_;
+  bool factory_reset_before_start_;
 
   // Logging
   std::shared_ptr<spdlog::logger> logger_;
@@ -80,9 +92,14 @@ public:
   void ReadParams(ros::NodeHandle & pnh);
   void SetCovarianceMatrix(
     const XmlRpc::XmlRpcValue & covariance_list, boost::array<double, 9ul> & covariance_matrix);
+  void SetArray(const XmlRpc::XmlRpcValue & values, std::array<float, 3> & arr);
   void VerifyParams();
+  void ConnectSensor();
+  void DisconnectSensor();
   void SetupSensor();
+  void ResetSensor();
   void StopSensor();
+  bool ResetServiceCallback(std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res);
   void SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketReceivedHandler handler);
   void BinaryAsyncMessageCallback(Packet & p, size_t index);
   const ros::Time CorrectTimestamp(
@@ -97,6 +114,7 @@ public:
     sensor_msgs::Temperature & msg, vn::sensors::CompositeData & cd, const ros::Time & time);
   void PopulatePresMsg(
     sensor_msgs::FluidPressure & msg, vn::sensors::CompositeData & cd, const ros::Time & time);
+  vn::math::vec3f Convert(const std::array<float, 3> & arr);
 };
 }  // namespace vectornav
 #endif  // VECTORNAV_HPP_

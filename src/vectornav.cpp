@@ -37,6 +37,11 @@ VectorNav::VectorNav(ros::NodeHandle & pnh)
   pub_uncomp_mag_ = pnh.advertise<sensor_msgs::MagneticField>("uncomp_magetic_field", 1000, false);
   pub_temp_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
   pub_pres_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
+  pub_sync_out_count_ = pnh.advertise<std_msgs::UInt32>("sync_out_count", 1000, false);
+
+  // Setup Services
+  logger_->debug("Setting up services");
+  srv_reset_ = pnh.advertiseService("reset", &VectorNav::ResetServiceCallback, this);
 
   receiving_data_ = false;
 }
@@ -63,6 +68,7 @@ void VectorNav::ReadParams(ros::NodeHandle & pnh)
   pnh.param<int>("sync_out_skip_factor", i_param, 39);
   sync_out_skip_factor_ = static_cast<uint16_t>(i_param);
   pnh.param<int>("sync_out_pulse_width", i_param, 1.0e+9);
+  pnh.param<bool>("publish_sync_out_count_on_change", publish_sync_out_count_on_change_, false);
   sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
   pnh.param<bool>("publish_uncomp_imu", publish_uncomp_imu_, false);
   pnh.param<bool>("publish_uncomp_mag", publish_uncomp_mag_, false);
@@ -81,6 +87,12 @@ void VectorNav::ReadParams(ros::NodeHandle & pnh)
   SetCovarianceMatrix(temp_rpc, orientation_covariance_);
   pnh.getParam("magnetic_field_covariance", temp_rpc);
   SetCovarianceMatrix(temp_rpc, mag_covariance_);
+  pnh.getParam("mag_ref", temp_rpc);
+  SetArray(temp_rpc, mag_ref_);
+  pnh.getParam("gravity_ref", temp_rpc);
+  SetArray(temp_rpc, gravity_ref_);
+  pnh.param<bool>("write_to_flash", write_to_flash_, false);
+  pnh.param<bool>("factory_reset_before_start", factory_reset_before_start_, false);
 }
 
 void VectorNav::SetCovarianceMatrix(
@@ -94,6 +106,19 @@ void VectorNav::SetCovarianceMatrix(
     ostr << covariance_list[i];
     std::istringstream istr(ostr.str());
     istr >> covariance_matrix[i];
+  }
+}
+
+void VectorNav::SetArray(const XmlRpc::XmlRpcValue & values, std::array<float, 3> & arr)
+{
+  assert(values.getType() == XmlRpc::XmlRpcValue::TypeArray);
+  assert(values.size() == 3);
+  for (int i = 0; i < values.size(); i++) {
+    // Use string stream here to avoid issues with parsing with decimal points
+    std::ostringstream ostr;
+    ostr << values[i];
+    std::istringstream istr(ostr.str());
+    istr >> arr[i];
   }
 }
 
@@ -115,7 +140,7 @@ void VectorNav::VerifyParams()
   }
 }
 
-void VectorNav::SetupSensor()
+void VectorNav::ConnectSensor()
 {
   // Attempt to connect to the sensor using the specified port and the supported baud rates.
   // This is because the sensor might be at a baud rate different from the one specified in the parameter file.
@@ -125,11 +150,10 @@ void VectorNav::SetupSensor()
   sensor_.setResponseTimeoutMs(1000);  // Wait for up to 1s for a response
   sensor_.setRetransmitDelayMs(50);    // Retransmit every 50ms
 
-
   // Iterate through the supported baud rates and try to connect to the sensor.
   // Once connected, try to change to the desired baud rate.
   for (const uint32_t & br : supported_baud_rates) {
-    // The VN100 family does not support 12800 baud rate
+    // The VN100 family does not support 128000 baud rate
     if (br == 128000 && sensor_family_ == vn::sensors::VnSensor::Family::VnSensor_Family_Vn100)
       continue;
 
@@ -171,27 +195,49 @@ void VectorNav::SetupSensor()
     throw std::runtime_error("Sensor connectivity check failed");
   }
   logger_->info("Sensor connectivity check passed");
+}
+
+void VectorNav::DisconnectSensor() { sensor_.disconnect(); }
+
+void VectorNav::SetupSensor()
+{
+  ConnectSensor();
 
   PrintSensorInfo();
 
-  // TODO: Feature (parameterized)
-  // Factory data reset/reset the sensor before any configuration change is made. This
-  // way only the configuration changes available through the driver will be avaialble.
+  if (factory_reset_before_start_) {
+    logger_->info("Restoring to Factory Settings");
+    sensor_.restoreFactorySettings();
+    DisconnectSensor();
+    ConnectSensor();
+  }
 
   // Stop any sort of data coming from the sensor before writing a config
   logger_->debug("Turning off data streaming");
   sensor_.writeAsyncDataOutputType(VNOFF);
 
+  // Write the reference vectors to the sensor
+  logger_->debug("Writing reference vectors");
+  try {
+    sensor_.writeMagneticAndGravityReferenceVectors(Convert(mag_ref_), Convert(gravity_ref_));
+  } catch (const vn::sensors::sensor_error & e) {
+    logger_->error(
+      "Failed to write reference vectors: {}. Do the mag and gravity ref values make sense?",
+      e.what());
+    throw;
+  }
+
   // Setup using the binary output registers. This is significantly faster than using ASCII output
   logger_->debug("Setting up binary output registers");
   vn::sensors::BinaryOutputRegister bor(
     async_mode_, async_rate_divisor_,
-    COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION |
-      COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_MAGPRES |
+    COMMONGROUP_TIMESTARTUP | COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL |
+      COMMONGROUP_MAGPRES |
       (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT : COMMONGROUP_NONE) |
       (publish_uncomp_imu_ ? COMMONGROUP_IMU : COMMONGROUP_NONE),
-    TIMEGROUP_NONE, publish_uncomp_mag_ ? IMUGROUP_UNCOMPMAG : IMUGROUP_NONE, GPSGROUP_NONE,
-    ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
+    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE),
+    publish_uncomp_mag_ ? IMUGROUP_UNCOMPMAG : IMUGROUP_NONE, GPSGROUP_NONE, ATTITUDEGROUP_NONE,
+    INSGROUP_NONE, GPSGROUP_NONE);
 
   vn::sensors::BinaryOutputRegister bor_none(
     ASYNCMODE_NONE, 1, COMMONGROUP_NONE, TIMEGROUP_NONE, IMUGROUP_NONE, GPSGROUP_NONE,
@@ -209,14 +255,28 @@ void VectorNav::SetupSensor()
     is_triggered_ ? SYNCINMODE_IMU : SYNCINMODE_COUNT, SYNCINEDGE_RISING, sync_in_skip_factor_,
     is_triggering_ ? SYNCOUTMODE_ITEMSTART : SYNCOUTMODE_NONE, SYNCOUTPOLARITY_POSITIVE,
     sync_out_skip_factor_, sync_out_pulse_width_);
+
+  // Write the changed params to the flash memory
+  if (write_to_flash_) sensor_.writeSettings();
 }
+
+void VectorNav::ResetSensor() { sensor_.reset(); }
 
 void VectorNav::StopSensor()
 {
   // Might need sleeps here to ensure the connection is closed properly - Need to check
   logger_->info("Disconnecting from sensor");
   sensor_.unregisterAsyncPacketReceivedHandler();
-  sensor_.disconnect();
+  DisconnectSensor();
+}
+
+bool VectorNav::ResetServiceCallback(std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res)
+{
+  logger_->info(
+    "Resetting VectorNav sensor. Internal Kalman Filter may take a few seconds to converge to "
+    "correct accelerometer and gyro bias");
+  ResetSensor();
+  return true;
 }
 
 void VectorNav::SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketReceivedHandler handler)
@@ -231,8 +291,7 @@ void VectorNav::SetupAsyncMessageCallback(vn::sensors::VnSensor::AsyncPacketRece
 void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
 {
   const ros::Time arrival_stamp = ros::Time::now();
-  if (!receiving_data_)
-  {
+  if (!receiving_data_) {
     logger_->info("Receiving data");
     receiving_data_ = true;
   }
@@ -248,13 +307,26 @@ void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
 
   // The time since the last SyncIn trigger event expressed in nano seconds.
   uint64_t sync_in_time;
-  if (cd.hasTimeSyncIn())
-    sync_in_time = cd.timeSyncIn();
+  if (cd.hasTimeSyncIn()) sync_in_time = cd.timeSyncIn();
 
   // Get corrected timestamp
   ros::Time corrected_stamp = CorrectTimestamp(arrival_stamp, startup_time, sync_in_time);
 
   logger_->trace("Publishing parsed data");
+  // Sync Out Count
+  if (pub_sync_out_count_.getNumSubscribers() && cd.hasSyncOutCnt()) {
+    std_msgs::UInt32 msg;
+    msg.data = cd.syncOutCnt();
+    if (publish_sync_out_count_on_change_) {
+      if (msg.data != sync_out_count_) {
+        sync_out_count_ = msg.data;
+        pub_sync_out_count_.publish(msg);
+      }
+    } else {
+      pub_sync_out_count_.publish(msg);
+    }
+  }
+
   // IMU
   if (pub_imu_.getNumSubscribers()) {
     sensor_msgs::Imu msg;
@@ -407,5 +479,10 @@ void VectorNav::PopulatePresMsg(
   msg.header.frame_id = frame_id_;
   msg.fluid_pressure = cd.pressure();  // kPa
   msg.variance = pres_variance_;
+}
+
+vn::math::vec3f VectorNav::Convert(const std::array<float, 3> & arr)
+{
+  return vn::math::vec3f(arr[0], arr[1], arr[2]);
 }
 }  // namespace vectornav
