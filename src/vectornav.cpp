@@ -16,18 +16,18 @@ VectorNav::VectorNav(ros::NodeHandle & pnh)
 
   // Setup logging sinks
   logger_console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  logger_console_sink_->set_level(log_level_);
+  logger_console_sink_->set_level(console_log_level_);
   logger_file_sink_ = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
     log_directory_ + ros::this_node::getName() + ".log", true);
-  logger_file_sink_->set_level(log_level_);
+  logger_file_sink_->set_level(file_log_level_);
 
   // Create logger
   std::vector<spdlog::sink_ptr> sinks;
   sinks.push_back(logger_console_sink_);
   sinks.push_back(logger_file_sink_);
   logger_ = std::make_shared<spdlog::logger>("logger", sinks.begin(), sinks.end());
-  logger_->set_level(log_level_);
-  logger_->flush_on(log_level_);
+  logger_->set_level(logger_log_level_);
+  logger_->flush_on(logger_flush_log_level_);
 
   // Setup Publishers
   logger_->debug("Setting up publishers");
@@ -76,8 +76,14 @@ void VectorNav::ReadParams(ros::NodeHandle & pnh)
   pnh.param<float>("temp_variance", temp_variance_, 0.1);
   pnh.param<float>("pres_variance", pres_variance_, 0.1);
   pnh.param<std::string>("log_directory", log_directory_, "/tmp/vectornav/");
-  pnh.param<int>("log_level", i_param, 0);
-  log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  pnh.param<int>("log_level/logger", i_param, 0);
+  logger_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  pnh.param<int>("log_level/flush", i_param, 0);
+  logger_flush_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  pnh.param<int>("log_level/file", i_param, 0);
+  file_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  pnh.param<int>("log_level/console", i_param, 0);
+  console_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
   XmlRpc::XmlRpcValue temp_rpc;
   pnh.getParam("linear_accel_covariance", temp_rpc);
   SetCovarianceMatrix(temp_rpc, linear_accel_covariance_);

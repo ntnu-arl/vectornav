@@ -58,7 +58,7 @@ pressure_variance: 0.1
 # Location to store logs
 log_directory: /tmp/vectornav/
 
-# Log level for the logger
+# Log levels for the logger and sinks
 # 0 - trace
 # 1 - debug
 # 2 - info
@@ -66,7 +66,11 @@ log_directory: /tmp/vectornav/
 # 4 - err
 # 5 - critical
 # 6 - off
-log_level: 1
+log_level:
+  logger: 1
+  flush: 1
+  file: 1
+  console: 1
 
 # Linear Accleration Covariance
 linear_accel_covariance: [0.01, 0.0, 0.0,

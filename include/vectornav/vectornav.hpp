@@ -67,7 +67,10 @@ private:
   float temp_variance_;
   float pres_variance_;
   std::string log_directory_;
-  spdlog::level::level_enum log_level_;
+  spdlog::level::level_enum logger_log_level_;
+  spdlog::level::level_enum logger_flush_log_level_;
+  spdlog::level::level_enum file_log_level_;
+  spdlog::level::level_enum console_log_level_;
   boost::array<double, 9ul> linear_accel_covariance_;
   boost::array<double, 9ul> angular_vel_covariance_;
   boost::array<double, 9ul> orientation_covariance_;
