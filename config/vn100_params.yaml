@@ -37,8 +37,8 @@ sync_out_skip_factor: 39
 # A pulse on the SYNCOUT pin will last for this many nanoseconds
 sync_out_pulse_width: 1.0e+9
 
-# Publish the sync out count only when there is a change. This only matters when is_triggering is true.
-publish_sync_out_count_on_change: false
+# Publish the sync out stamp only when there is a change in the sync out count. This only matters when is_triggering is true.
+publish_sync_out_stamp_on_change: false
 
 # Control whether the Accelerometer and Gyroscopre measurements that have not been compensated for by the onboard Kalman filter are published
 publish_uncomp_imu: true

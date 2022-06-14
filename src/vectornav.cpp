@@ -37,7 +37,7 @@ VectorNav::VectorNav(ros::NodeHandle & pnh)
   pub_uncomp_mag_ = pnh.advertise<sensor_msgs::MagneticField>("uncomp_magetic_field", 1000, false);
   pub_temp_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
   pub_pres_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
-  pub_sync_out_count_ = pnh.advertise<std_msgs::UInt32>("sync_out_count", 1000, false);
+  pub_sync_out_stamp_ = pnh.advertise<std_msgs::Header>("sync_out_stamp", 1000, false);
 
   // Setup Services
   logger_->debug("Setting up services");
@@ -68,7 +68,7 @@ void VectorNav::ReadParams(ros::NodeHandle & pnh)
   pnh.param<int>("sync_out_skip_factor", i_param, 39);
   sync_out_skip_factor_ = static_cast<uint16_t>(i_param);
   pnh.param<int>("sync_out_pulse_width", i_param, 1.0e+9);
-  pnh.param<bool>("publish_sync_out_count_on_change", publish_sync_out_count_on_change_, false);
+  pnh.param<bool>("publish_sync_out_count_on_change", publish_sync_out_stamp_on_change_, false);
   sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
   pnh.param<bool>("publish_uncomp_imu", publish_uncomp_imu_, false);
   pnh.param<bool>("publish_uncomp_mag", publish_uncomp_mag_, false);
@@ -313,17 +313,18 @@ void VectorNav::BinaryAsyncMessageCallback(Packet & p, size_t index)
   ros::Time corrected_stamp = CorrectTimestamp(arrival_stamp, startup_time, sync_in_time);
 
   logger_->trace("Publishing parsed data");
-  // Sync Out Count
-  if (pub_sync_out_count_.getNumSubscribers() && cd.hasSyncOutCnt()) {
-    std_msgs::UInt32 msg;
-    msg.data = cd.syncOutCnt();
-    if (publish_sync_out_count_on_change_) {
-      if (msg.data != sync_out_count_) {
-        sync_out_count_ = msg.data;
-        pub_sync_out_count_.publish(msg);
+  // Sync Out Stamp
+  if (pub_sync_out_stamp_.getNumSubscribers() && cd.hasSyncOutCnt()) {
+    std_msgs::Header msg;
+    msg.stamp = corrected_stamp;
+    msg.frame_id = std::to_string(cd.syncOutCnt());
+    if (publish_sync_out_stamp_on_change_) {
+      if (cd.syncOutCnt() != sync_out_count_) {
+        sync_out_count_ = cd.syncOutCnt();
+        pub_sync_out_stamp_.publish(msg);
       }
     } else {
-      pub_sync_out_count_.publish(msg);
+      pub_sync_out_stamp_.publish(msg);
     }
   }
 

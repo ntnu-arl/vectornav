@@ -18,7 +18,6 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
 #include <sensor_msgs/Temperature.h>
-#include <std_msgs/UInt32.h>
 #include <std_srvs/Empty.h>
 
 // spdlog
@@ -42,7 +41,7 @@ private:
   ros::Publisher pub_uncomp_mag_;
   ros::Publisher pub_pres_;
   ros::Publisher pub_temp_;
-  ros::Publisher pub_sync_out_count_;
+  ros::Publisher pub_sync_out_stamp_;
 
   // Services
   ros::ServiceServer srv_reset_;
@@ -60,7 +59,7 @@ private:
   bool is_triggering_;
   uint16_t sync_out_skip_factor_;
   uint32_t sync_out_pulse_width_;
-  bool publish_sync_out_count_on_change_;
+  bool publish_sync_out_stamp_on_change_;
   uint32_t sync_out_count_;
   bool publish_uncomp_imu_;
   bool publish_uncomp_mag_;
