@@ -2,6 +2,8 @@
 
 A minimal driver for VectorNav IMUs
 
+[![Formatting (pre-commit)](https://github.com/ntnu-arl/vectornav/actions/workflows/format.yaml/badge.svg?branch=main)](https://github.com/ntnu-arl/vectornav/actions/workflows/format.yaml?query=branch%3Amain)
+
 ## Setup
 
 ### Setup dependancies
