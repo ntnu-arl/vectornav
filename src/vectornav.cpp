@@ -68,7 +68,7 @@ void VectorNav::ReadParams(ros::NodeHandle & pnh)
   pnh.param<int>("sync_out_skip_factor", i_param, 39);
   sync_out_skip_factor_ = static_cast<uint16_t>(i_param);
   pnh.param<int>("sync_out_pulse_width", i_param, 1.0e+9);
-  pnh.param<bool>("publish_sync_out_count_on_change", publish_sync_out_stamp_on_change_, false);
+  pnh.param<bool>("publish_sync_out_stamp_on_change", publish_sync_out_stamp_on_change_, false);
   sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
   pnh.param<bool>("publish_uncomp_imu", publish_uncomp_imu_, false);
   pnh.param<bool>("publish_uncomp_mag", publish_uncomp_mag_, false);
