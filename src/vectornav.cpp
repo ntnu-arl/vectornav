@@ -25,7 +25,7 @@ VectorNav::VectorNav(ros::NodeHandle & pnh)
   std::vector<spdlog::sink_ptr> sinks;
   sinks.push_back(logger_console_sink_);
   sinks.push_back(logger_file_sink_);
-  logger_ = std::make_shared<spdlog::logger>("logger", sinks.begin(), sinks.end());
+  logger_ = std::make_shared<spdlog::logger>(ros::this_node::getName() + "_logger", sinks.begin(), sinks.end());
   logger_->set_level(logger_log_level_);
   logger_->flush_on(logger_flush_log_level_);
 
