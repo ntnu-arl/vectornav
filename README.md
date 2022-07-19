@@ -52,6 +52,13 @@ source devel/setup.bash
 roslaunch vectornav vectornav.launch
 ```
 
+### Compatibility
+
+This driver has been tested on the following systems:
+ - USB:
+    - Pop OS 20.04 x86-64
+    - Ubuntu 20.04 arm64
+
 ## Additional Documentation
 
 ![Coordinate frame](images/vn100_coordinate_system.png)
