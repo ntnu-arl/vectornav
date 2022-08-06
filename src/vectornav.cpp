@@ -176,7 +176,9 @@ void VectorNav::ConnectSensor()
     } catch (const vn::permission_denied & e) {
       // Rules error
       logger_->critical(
-        "Permission denied: {}. Did you restart the system after loading the new rules?", e.what());
+        "Permission denied with error message: \"{}\". Did you restart the system after loading "
+        "the new rules? Are you in the correct groups to access the device?",
+        e.what());
       throw;
     } catch (const vn::timeout & e) {
       // Disconnect if any other error occurs

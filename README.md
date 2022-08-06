@@ -27,16 +27,24 @@ catkin build
 
 ### Setting up custom udev rules
 
+1. Use `udevadm info --attribute-walk /dev/ttyUSB0` (change `/dev/ttyUSB0` to the port that the converter is connected to) to find the values for your FTDI converter. Typically, `idProduct`, `idVendor` and `serial` should be enough.
+2. Edit the `99-vn100.rules` file and replace the values with the ones from your converter.
+3. Edit the `SYMLINK` line in the `99-vn100.rules` file and replace the value with the name of the device that you want to use.
+4. Copy the `99-vn100.rules` file to `/etc/udev/rules.d/`.
+
 ```bash
 cd catkin_ws/src
 sudo cp vectornav/udev/* /etc/udev/rules.d/
 sudo udevadm control --reload-rules && udevadm trigger
 ```
 
+5. Add your user to the `dialout` group with `sudo usermod -a -G dialout $USER`.
+6. Restart the computer.
+
 Note:
 
 1. The USB latency timer should be set to 1 for the IMU to avoid the [bunching up of IMU messages](https://github.com/ntnu-arl/vectornav/issues/5). The udev rules automatically does this for you.
-2. The attributes in the udev rule here may not match the attributes for your specific ftdi-usb converter. You can use `udevadm info --attribute-walk /dev/ttyUSB0` (change `/dev/ttyUSB0` to the port that the converter is connected to) to find the values that you can enter in the udev rule and `udevadm test $(udevadm info --query=path --name=/dev/ttyUSB0)` to test whether the new rule works as expected.
+2. You can use `udevadm test $(udevadm info --query=path --name=/dev/ttyUSB0)` to test whether the new rule works as expected. If the rule works, it should show you the attributes for the converter with the rule that was triggered.
 3. You may need to unplug and replug the IMU to make the udev rule take effect.
 4. If the udev rules do not load, you may need to restart the computer. This only needs to be done once during the setup.
 
@@ -55,9 +63,10 @@ roslaunch vectornav vectornav.launch
 ### Compatibility
 
 This driver has been tested on the following systems:
- - USB:
-    - Pop OS 20.04 x86-64
-    - Ubuntu 20.04 arm64
+
+- USB:
+  - Pop OS 20.04 x86-64
+  - Ubuntu 20.04 arm64
 
 ## Additional Documentation
 
