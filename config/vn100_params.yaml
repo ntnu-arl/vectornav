@@ -69,7 +69,7 @@ log_directory: /tmp/vectornav/
 # 5 - critical
 # 6 - off
 log_level:
-  logger: 1
+  logger: 2
   flush: 1
   file: 1
   console: 1
