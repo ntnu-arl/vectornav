@@ -38,6 +38,8 @@ sync_out_skip_factor: 39
 sync_out_pulse_width: 1.0e+9
 
 # Publish the sync out stamp only when there is a change in the sync out count. This only matters when is_triggering is true.
+# Note: The sync out stamp is not necessarily correct if the IMU is not running at 800 Hz. It can still be used to get an idea
+# of whether the SYNCOUT pin is triggering at the correct rate. Explanation: https://github.com/ntnu-arl/vectornav/pull/25#issuecomment-1155445304
 publish_sync_out_stamp_on_change: false
 
 # Control whether the Accelerometer and Gyroscopre measurements that have not been compensated for by the onboard Kalman filter are published
