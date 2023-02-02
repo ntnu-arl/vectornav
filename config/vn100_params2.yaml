@@ -6,7 +6,7 @@ sensor_family: 1
 
 # Port on which the VN-100 is connected
 # port: /dev/ttyUSB_VN100
-port: /dev/ttyS4
+port: /dev/ttyS1
 
 # This should be a value from the set [9600, 19200, 38400, 57600, 115200, 128000, 230400, 460800, 921600] chosen such that it is able to support the required data streaming rate
 baud_rate: 115200 #921600
@@ -30,7 +30,7 @@ is_triggered: false
 sync_in_skip_factor: 0
 
 # Control whether the IMU provides a pulse on the SYNCOUT pin
-is_triggering: false
+is_triggering: true
 
 # A pulse on the SYNCOUT pin will trigger the IMU after skipping this many samples
 sync_out_skip_factor: 39
@@ -39,10 +39,7 @@ sync_out_skip_factor: 39
 sync_out_pulse_width: 1.0e+7
 
 # Publish the sync out stamp only when there is a change in the sync out count. This only matters when is_triggering is true.
-# Note: The sync out stamp is not necessarily correct if the IMU is not running at 800 Hz. It can still be used to get an idea
-# of whether the SYNCOUT pin is triggering at the correct rate. Explanation: https://github.com/ntnu-arl/vectornav/pull/25#issuecomment-1155445304
-publish_sync_out_stamp_on_change: false
-
+publish_sync_out_stamp_on_change: true
 
 # Control whether the Accelerometer and Gyroscopre measurements that have not been compensated for by the onboard Kalman filter are published
 publish_uncomp_imu: true
@@ -71,7 +68,7 @@ log_directory: /tmp/vectornav/
 # 5 - critical
 # 6 - off
 log_level:
-  logger: 2
+  logger: 1
   flush: 1
   file: 1
   console: 1

@@ -2,4 +2,8 @@
   <node pkg="vectornav" type="vectornav_node" name="vectornav_node" output="screen"> # launch-prefix="gdb -ex run --args">
     <rosparam command="load" file="$(find vectornav)/config/vn100_params.yaml"/>
   </node>
+
+  <node pkg="vectornav" type="vectornav_node" name="vectornav_node2" output="screen"> # launch-prefix="gdb -ex run --args">
+    <rosparam command="load" file="$(find vectornav)/config/vn100_params2.yaml"/>
+  </node>
 </launch>
