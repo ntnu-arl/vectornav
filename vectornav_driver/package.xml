@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>vectornav_driver</name>
+  <version>1.0.0</version>
+  <description>A driver for VectorNav IMUs</description>
+
+  <maintainer email="nikhil.v.khedekar@ntnu.no">Nikhil Khedekar</maintainer>
+  <maintainer email="morten.nissov@ntnu.no">Morten Nissov</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>spdlog</depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>

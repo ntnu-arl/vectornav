@@ -1,0 +1,87 @@
+# Sensor Family
+# 1 - VN-100
+# 2 - VN-200
+# 3 - VN-300
+sensor_family: 1
+
+# Port on which the VN-100 is connected
+port: /dev/ttyUSB_VN100
+
+# This should be a value from the set [9600, 19200, 38400, 57600, 115200, 128000, 230400, 460800, 921600] chosen such that it is able to support the required data streaming rate
+baud_rate: 921600
+
+# The VN-100 has two ports that it can stream data from. This param controls which of the ports is to be used. Possible values are:
+# 0 - None
+# 1 - Port 1
+# 2 - Port 2
+# 3 - Both ports
+# The cable from OEM connects on Port 1
+# A custom cable with an FTDI converter on pins 8 and 9 on the rugged version of the VN100 connects on Port 2
+async_mode: 2
+
+# imu sampling rate (800 Hz) divided by this value gives the output rate
+async_rate_divisor: 4
+
+# Control whether the IMU is triggered by a pulse on the SYNCIN pin
+# If the IMU is triggered then the imu sampling rate is defined by the trigger
+is_triggered: false
+
+# A pulse on the SYNCIN pin will trigger the IMU after skipping this many samples
+sync_in_skip_factor: 0
+
+# Control whether the IMU provides a pulse on the SYNCOUT pin
+is_triggering: false
+
+# A pulse on the SYNCOUT pin will occur after the IMU skips this many samples
+sync_out_skip_factor: 39
+
+# A pulse on the SYNCOUT pin will last for this many nanoseconds
+sync_out_pulse_width: 1.0e+7
+
+# Publish the sync out stamp only when there is a change in the sync out count. This only matters when is_triggering is true.
+# Note: The sync out stamp is not necessarily correct if the IMU is not running at 800 Hz. It can still be used to get an idea
+# of whether the SYNCOUT pin is triggering at the correct rate. Explanation: https://github.com/ntnu-arl/vectornav/pull/25#issuecomment-1155445304
+publish_sync_out_stamp_on_change: false
+
+# Frame id for the headers of the published messages
+frame_id: imu_link_ned
+
+# Whether to apply user transformation to the IMU data
+set_reference_frame: false
+
+# Rotation Matrix applied to the raw measurements before being processed in any way
+# This must be a orthonormal, right-handed matrix within tolerance of 1e-5 with each value between [-1,1]
+reference_frame: [1, 0, 0,
+                  0, 1, 0,
+                  0, 0, 1]
+
+# Write the new settings to the onboard flash
+write_to_flash: false
+
+# Control whether the onboard flash is erased before the sensor is started
+factory_reset_before_start: false
+
+# Standard deviations for the IMU data
+linear_acceleration_stddev: 0.0
+angular_velocity_stddev: 0.0
+magnetic_field_stddev: 0.0
+orientation_stddev: 0.0
+temperature_stddev: 0.0
+pressure_stddev: 0.0
+
+# Location to store logs
+log_directory: /tmp/vectornav/
+
+# Log levels for the logger and sinks
+# 0 - trace
+# 1 - debug
+# 2 - info
+# 3 - warn
+# 4 - err
+# 5 - critical
+# 6 - off
+log_level:
+  logger: 2
+  flush: 1
+  file: 1
+  console: 1

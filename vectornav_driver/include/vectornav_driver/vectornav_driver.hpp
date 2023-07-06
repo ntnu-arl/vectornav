@@ -1,0 +1,112 @@
+// Copyright (c) 2022, Autonomous Robots Lab, Norwegian University of Science and Technology
+// All rights reserved.
+
+// This source code is licensed under the BSD-style license found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef VECTORNAV_DRIVER_VECTORNAV_DRIVER_HPP_
+#define VECTORNAV_DRIVER_VECTORNAV_DRIVER_HPP_
+
+// vnproglib
+#include "vn/compositedata.h"
+#include "vn/sensors.h"
+
+// vectornav_driver
+#include "vectornav_driver/utils.hpp"
+
+// ROS
+#include <sensor_msgs/FluidPressure.h>
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/MagneticField.h>
+#include <sensor_msgs/Temperature.h>
+#include <std_srvs/Empty.h>
+
+// spdlog
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+
+using namespace vn::protocol::uart;
+
+namespace vectornav_driver
+{
+class VectorNavDriver
+{
+private:
+  // Members
+  vn::sensors::VnSensor sensor_;
+  // Member messages
+  sensor_msgs::Imu filter_data_msg_;
+  sensor_msgs::Imu imu_data_msg_;
+  sensor_msgs::MagneticField filter_mag_msg_;
+  sensor_msgs::MagneticField imu_mag_msg_;
+  sensor_msgs::FluidPressure pressure_msg_;
+  sensor_msgs::Temperature temperature_msg_;
+
+  // Publishers
+  ros::Publisher pub_filter_data_;
+  ros::Publisher pub_imu_data_;
+  ros::Publisher pub_filter_mag_;
+  ros::Publisher pub_imu_mag_;
+  ros::Publisher pub_pressure_;
+  ros::Publisher pub_temperature_;
+  ros::Publisher pub_sync_out_stamp_;
+
+  // Services
+  ros::ServiceServer srv_reset_;
+
+  // Parameters
+  vn::sensors::VnSensor::Family sensor_family_;
+  std::string port_;
+  uint32_t baud_rate_;
+  uint16_t async_mode_;
+  uint16_t async_rate_divisor_;
+  // Configuration for the sensor being triggered by an external source
+  bool is_triggered_;
+  uint16_t sync_in_skip_factor_;
+  // Configuration for the sensor triggering external objects
+  bool is_triggering_;
+  uint16_t sync_out_skip_factor_;
+  uint32_t sync_out_pulse_width_;
+  bool publish_sync_out_stamp_on_change_;
+  uint32_t sync_out_count_;
+  std::string frame_id_;
+  double linear_acceleration_stddev_;
+  double angular_velocity_stddev_;
+  double magnetic_field_stddev_;
+  double orientation_stddev_;
+  double temperature_stddev_;
+  double pressure_stddev_;
+  std::string log_directory_;
+  spdlog::level::level_enum logger_log_level_;
+  spdlog::level::level_enum logger_flush_log_level_;
+  spdlog::level::level_enum file_log_level_;
+  spdlog::level::level_enum console_log_level_;
+  bool set_reference_frame_;
+  boost::array<double, 9ul> reference_frame_;
+  bool write_to_flash_;
+  bool factory_reset_before_start_;
+
+  // Logging
+  std::shared_ptr<spdlog::logger> logger_;
+  std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> logger_console_sink_;
+  std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logger_file_sink_;
+
+public:
+  VectorNavDriver(ros::NodeHandle & pnh);
+  ~VectorNavDriver();
+  void readParams(ros::NodeHandle & pnh);
+  void verifyParams();
+  void connectSensor();
+  void setupSensor();
+  void resetSensor();
+  void stopSensor();
+  bool resetServiceCallback(std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res);
+  void binaryAsyncMessageCallback(Packet & p, size_t index);
+  void populateImuMsg(vn::sensors::CompositeData & cd, const ros::Time & time, bool filter);
+  void populateMagMsg(vn::sensors::CompositeData & cd, const ros::Time & time, bool filter);
+  void populateTempMsg(vn::sensors::CompositeData & cd, const ros::Time & time);
+  void populatePresMsg(vn::sensors::CompositeData & cd, const ros::Time & time);
+};
+}  // namespace vectornav_driver
+#endif  // VECTORNAV_DRIVER_VECTORNAV_DRIVER_HPP_
