@@ -1,0 +1,3 @@
+vectornav_driver:
+  ubuntu:
+  - ros-noetic-vectornav-driver

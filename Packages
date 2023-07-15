@@ -1,0 +1,16 @@
+Package: ros-noetic-vectornav-driver
+Architecture: amd64
+Version: 0-2023.07.15.17.53
+Priority: optional
+Section: misc
+Maintainer: Nikhil Khedekar <nikhil.v.khedekar@ntnu.no>
+Installed-Size: 28
+Depends: libspdlog-dev, ros-noetic-roscpp, ros-noetic-sensor-msgs, ros-noetic-std-srvs
+Filename: ./ros-noetic-vectornav-driver_0-2023.07.15.17.53_amd64.deb
+Size: 4656
+MD5sum: 6047a1e7549bb6db6eff1cc5eca10362
+SHA1: c8441e10e8e05999c0488df83f38d447cee11c18
+SHA256: 9b1cf282fb4c1ef37de3594b9ca66347a6fae9ae0f4f6c6f27c1e496f88b411c
+SHA512: 370cb3f96816cb040c34e84f577b351d038f24fcd9b2f9033a4c3dc6c4efaa91b9b981f53b7cc2f7dde8948be38e1d27ca0d916fbed36c7c38ccc7816dc9c5d7
+Description: A driver for VectorNav IMUs
+
