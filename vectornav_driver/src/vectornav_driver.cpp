@@ -69,12 +69,23 @@ VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
   pub_pressure_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
   pub_sync_out_stamp_ = pnh.advertise<std_msgs::Header>("sync_out_stamp", 1000, false);
 
+  // Setup Subscribers
+  if (use_sensor_sync_) {
+    logger_->debug("Setting up subscribers");
+    sub_trigger_stamp_ = pnh.subscribe(
+      "/sensor_sync_node/trigger_0", 10, &VectorNavDriver::triggerStampCallback, this,
+      ros::TransportHints().tcpNoDelay());
+  }
+
   // Setup Services
   logger_->debug("Setting up services");
   srv_reset_ = pnh.advertiseService("reset", &VectorNavDriver::resetServiceCallback, this);
 }
 
-VectorNavDriver::~VectorNavDriver() {}
+VectorNavDriver::~VectorNavDriver()
+{
+  ros::param::del(ros::this_node::getName() + node_ready_param_name_);
+}
 
 void VectorNavDriver::readParams(ros::NodeHandle & pnh)
 {
@@ -142,6 +153,7 @@ void VectorNavDriver::readParams(ros::NodeHandle & pnh)
   file_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
   pnh.param<int>("log_level/console", i_param, 0);
   console_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  pnh.param<bool>("use_sensor_sync", use_sensor_sync_, false);
 }
 
 void VectorNavDriver::verifyParams()
@@ -159,6 +171,13 @@ void VectorNavDriver::verifyParams()
     assert(angular_vel_covariance_[i] >= 0);
     assert(orientation_covariance_[i] >= 0);
     assert(mag_covariance_[i] >= 0);
+  }
+  if (use_sensor_sync_)
+  {
+    if (!is_triggered_)
+    {
+      throw std::runtime_error("Sensor sync is enabled but is_triggered is false");
+    }
   }
 }
 
@@ -270,7 +289,7 @@ void VectorNavDriver::setupSensor()
   // Setup using the binary output registers. This is significantly faster than using ASCII output
   logger_->debug("Setting up binary output registers");
   vn::sensors::BinaryOutputRegister bor(
-    async_mode_, async_rate_divisor_,
+    async_mode_, (use_sensor_sync_ ? 1 : async_rate_divisor_),
     (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT : COMMONGROUP_NONE) |
       COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_IMU |
       COMMONGROUP_MAGPRES,
@@ -302,6 +321,7 @@ void VectorNavDriver::setupSensor()
   sensor_.registerAsyncPacketReceivedHandler(this, callbackWrapper);
   logger_->debug("Async message callback setup");
   logger_->info("Ready to receive data");
+  ros::param::set(ros::this_node::getName() + node_ready_param_name_, true);
 }
 
 void VectorNavDriver::resetSensor()
@@ -316,6 +336,7 @@ void VectorNavDriver::stopSensor()
 {
   // Might need sleeps here to ensure the connection is closed properly - Need to check
   logger_->info("Disconnecting from sensor");
+  trigger_stamp_deque_cv_.notify_all();
   sensor_.unregisterAsyncPacketReceivedHandler();
   sensor_.disconnect();
 }
@@ -330,9 +351,59 @@ bool VectorNavDriver::resetServiceCallback(
   return true;
 }
 
+void VectorNavDriver::getTriggerBasedStamp(
+  const uint64_t time_sync_in, const uint32_t sync_in_cnt, ros::Time & stamp)
+{
+  logger_->debug("Looking to match count: {}", sync_in_cnt);
+  logger_->debug("Time since sync in: {}", time_sync_in);
+
+  {
+    std::unique_lock<std::mutex> lock(trigger_stamp_deque_mutex_);
+    if (trigger_stamp_deque_.empty()) {
+      logger_->warn("Waiting for trigger");
+
+      auto tic = std::chrono::high_resolution_clock::now();
+
+      trigger_stamp_deque_cv_.wait(
+        lock, [this] { return !trigger_stamp_deque_.empty() || ros::isShuttingDown(); });
+      // Exit if wakeup was due to ROS shutting down
+      if (ros::isShuttingDown()) return;
+
+      auto toc = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::microseconds>(toc - tic);
+
+      logger_->warn("\tDone waiting for trigger, took {}ms", duration.count() / 1e3);
+      count_[0]++;
+      logger_->info("error count: [{} waits for trigger, {} imu skips]\n", count_[0], count_[1]);
+    }
+
+    while (!trigger_stamp_deque_.empty()) {
+      std_msgs::Header msg = trigger_stamp_deque_.front();
+      uint32_t trigger_count = std::stoul(msg.frame_id);
+      logger_->debug("\tchecking trigger count: {}", trigger_count);
+      if (trigger_count == sync_in_cnt) {
+        stamp = msg.stamp;
+        trigger_stamp_deque_.pop_front();
+        break;
+      } else if (trigger_count < sync_in_cnt) {
+        logger_->warn("dropping unused trigger message({}), IMU skip probably", trigger_count);
+        trigger_stamp_deque_.pop_front();
+        count_[1]++;
+        logger_->info("error count: [{} waits for trigger, {} imu skips]\n", count_[0], count_[1]);
+      } else {
+        logger_->error("trigger count > sync_in_cnt, this should not happen");
+        break;
+      }
+    }
+  }
+
+  // Offset the timestamp by the time_sync_in
+  stamp += ros::Duration(0, time_sync_in);
+}
+
 void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 {
-  const ros::Time arrival_stamp = ros::Time::now();
+  ros::Time stamp = ros::Time::now();
 
   static bool first = true;
   if (first) {
@@ -340,21 +411,43 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
     logger_->info("Receiving data");
   }
 
-  logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
+  logger_->trace("Received async message at timestamp: {}", stamp.toSec());
 
   logger_->trace("Parsing binary async message");
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
   logger_->trace("Finished parsing binary async message");
 
-  // The time since the last SyncIn trigger event expressed in nano seconds.
-  uint64_t sync_in_time;
-  if (cd.hasTimeSyncIn()) sync_in_time = cd.timeSyncIn();
+  if (use_sensor_sync_) {
+    // The time since the last SyncIn trigger event expressed in nano seconds.
+    uint64_t time_sync_in = 0;
+    if (cd.hasTimeSyncIn()) {
+      time_sync_in = cd.timeSyncIn();
+    } else {
+      logger_->critical("No timeSyncIn in message while using sensor sync");
+      return;
+    }
+
+    uint32_t sync_in_cnt = 0;
+    if (cd.hasSyncInCnt()) {
+      sync_in_cnt = cd.syncInCnt();
+    } else {
+      logger_->error("No syncInCnt in message while using sensor sync");
+      return;
+    }
+
+    if (sync_in_cnt % async_rate_divisor_ != 0) {
+      logger_->debug("Skipping message as sync_in_cnt % async_rate_divisor_ != 0");
+      return;
+    }
+
+    getTriggerBasedStamp(time_sync_in, sync_in_cnt, stamp);
+  }
 
   logger_->trace("Publishing parsed data");
   // Sync Out Stamp
   if (pub_sync_out_stamp_.getNumSubscribers() && cd.hasSyncOutCnt()) {
     std_msgs::Header msg;
-    msg.stamp = arrival_stamp;
+    msg.stamp = stamp;
     msg.frame_id = std::to_string(cd.syncOutCnt());
     if (publish_sync_out_stamp_on_change_) {
       if (cd.syncOutCnt() != sync_out_count_) {
@@ -368,37 +461,37 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 
   // Filtered IMU
   if (pub_filter_data_.getNumSubscribers()) {
-    populateImuMsg(cd, arrival_stamp, true);
+    populateImuMsg(cd, stamp, true);
     pub_filter_data_.publish(filter_data_msg_);
   }
 
   // IMU
   if (pub_imu_data_.getNumSubscribers()) {
-    populateImuMsg(cd, arrival_stamp, false);
+    populateImuMsg(cd, stamp, false);
     pub_imu_data_.publish(imu_data_msg_);
   }
 
   // Filtered Magnetic Field
   if (pub_filter_mag_.getNumSubscribers()) {
-    populateMagMsg(cd, arrival_stamp, true);
+    populateMagMsg(cd, stamp, true);
     pub_filter_mag_.publish(filter_mag_msg_);
   }
 
   // Magnetic Field
   if (pub_imu_mag_.getNumSubscribers()) {
-    populateMagMsg(cd, arrival_stamp, false);
+    populateMagMsg(cd, stamp, false);
     pub_imu_mag_.publish(imu_mag_msg_);
   }
 
   // Temperature
   if (pub_temperature_.getNumSubscribers()) {
-    populateTempMsg(cd, arrival_stamp);
+    populateTempMsg(cd, stamp);
     pub_temperature_.publish(temperature_msg_);
   }
 
   // Pressure
   if (pub_pressure_.getNumSubscribers()) {
-    populatePresMsg(cd, arrival_stamp);
+    populatePresMsg(cd, stamp);
     pub_pressure_.publish(pressure_msg_);
   }
 }
@@ -483,4 +576,13 @@ void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const ros
   pressure_msg_.header.stamp = stamp;
   pressure_msg_.fluid_pressure = cd.pressure() * 1.0e3;  // Convert to Pa
 }
+
+void VectorNavDriver::triggerStampCallback(const std_msgs::HeaderConstPtr msg)
+{
+  std::lock_guard<std::mutex> lock(trigger_stamp_deque_mutex_);
+  logger_->debug("Added trigger for count: {}", msg->frame_id);
+  trigger_stamp_deque_.push_back(*msg);
+  trigger_stamp_deque_cv_.notify_one();
+}
+
 }  // namespace vectornav_driver

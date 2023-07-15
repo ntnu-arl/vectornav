@@ -111,3 +111,5 @@ log_level:
   flush: 1
   file: 1
   console: 1
+
+use_sensor_sync: false

@@ -26,6 +26,11 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+// C++
+#include <mutex>
+#include <condition_variable>
+#include <deque>
+
 using namespace vn::protocol::uart;
 
 namespace vectornav_driver
@@ -35,6 +40,12 @@ class VectorNavDriver
 private:
   // Members
   vn::sensors::VnSensor sensor_;
+  std::deque<std_msgs::Header> trigger_stamp_deque_;
+  std::mutex trigger_stamp_deque_mutex_;
+  std::condition_variable trigger_stamp_deque_cv_;
+  const std::string node_ready_param_name_{"/ready"};
+  std::vector<int> count_{0, 0, 0};
+
   // Member messages
   sensor_msgs::Imu filter_data_msg_;
   sensor_msgs::Imu imu_data_msg_;
@@ -51,6 +62,9 @@ private:
   ros::Publisher pub_pressure_;
   ros::Publisher pub_temperature_;
   ros::Publisher pub_sync_out_stamp_;
+
+  // Subscribers
+  ros::Subscriber sub_trigger_stamp_;
 
   // Services
   ros::ServiceServer srv_reset_;
@@ -97,6 +111,7 @@ private:
   boost::array<double, 9ul> reference_frame_;
   bool write_to_flash_;
   bool factory_reset_before_start_;
+  bool use_sensor_sync_;
 
   // Logging
   std::shared_ptr<spdlog::logger> logger_;
@@ -118,6 +133,9 @@ public:
   void populateMagMsg(vn::sensors::CompositeData & cd, const ros::Time & time, bool filter);
   void populateTempMsg(vn::sensors::CompositeData & cd, const ros::Time & time);
   void populatePresMsg(vn::sensors::CompositeData & cd, const ros::Time & time);
+  void triggerStampCallback(const std_msgs::HeaderConstPtr msg);
+  void getTriggerBasedStamp(
+    const uint64_t time_sync_in, const uint32_t sync_in_cnt, ros::Time & stamp);
 };
 }  // namespace vectornav_driver
 #endif  // VECTORNAV_DRIVER_VECTORNAV_DRIVER_HPP_
