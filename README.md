@@ -97,6 +97,7 @@ This driver has been tested on the following systems:
 - VN100 Rugged - USB:
   - Pop OS 20.04 x86-64
   - Ubuntu 20.04 arm64
+  - Ubuntu 20.04 x86-64
 
 ## Additional Documentation
 
