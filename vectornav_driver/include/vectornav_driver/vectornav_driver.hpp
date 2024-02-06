@@ -70,6 +70,17 @@ private:
   uint32_t sync_out_pulse_width_;
   bool publish_sync_out_stamp_on_change_;
   uint32_t sync_out_count_;
+  // IMU filtering configuration
+  uint16_t mag_window_size_;
+  uint16_t accel_window_size_;
+  uint16_t gyro_window_size_;
+  uint16_t temp_window_size_;
+  uint16_t pres_window_size_;
+  vn::protocol::uart::FilterMode mag_filter_mode_;
+  vn::protocol::uart::FilterMode accel_filter_mode_;
+  vn::protocol::uart::FilterMode gyro_filter_mode_;
+  vn::protocol::uart::FilterMode temp_filter_mode_;
+  vn::protocol::uart::FilterMode pres_filter_mode_;
   std::string frame_id_;
   double linear_acceleration_stddev_;
   double angular_velocity_stddev_;

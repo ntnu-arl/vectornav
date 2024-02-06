@@ -103,6 +103,28 @@ void VectorNavDriver::readParams(ros::NodeHandle & pnh)
   XmlRpc::XmlRpcValue reference_frame_rpc;
   pnh.getParam("reference_frame", reference_frame_rpc);
   setMatrix(reference_frame_rpc, reference_frame_);
+  pnh.param<int>("mag_window_size", i_param, 0);
+  std::cout << "mag_window_size: " << i_param << "\n";
+  mag_window_size_ = static_cast<uint16_t>(i_param);
+  std::cout << "mag_window_size_: " << mag_window_size_ << "\n";
+  pnh.param<int>("accel_window_size", i_param, 4);
+  accel_window_size_ = static_cast<uint16_t>(i_param);
+  pnh.param<int>("gyro_window_size", i_param, 4);
+  gyro_window_size_ = static_cast<uint16_t>(i_param);
+  pnh.param<int>("temp_window_size", i_param, 4);
+  temp_window_size_ = static_cast<uint16_t>(i_param);
+  pnh.param<int>("pres_window_size", i_param, 4);
+  pres_window_size_ = static_cast<uint16_t>(i_param);
+  pnh.param<int>("mag_filter_mode", i_param, 0);
+  mag_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  pnh.param<int>("accel_filter_mode", i_param, 3);
+  accel_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  pnh.param<int>("gyro_filter_mode", i_param, 3);
+  gyro_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  pnh.param<int>("temp_filter_mode", i_param, 3);
+  temp_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  pnh.param<int>("pres_filter_mode", i_param, 0);
+  pres_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
   pnh.param<bool>("write_to_flash", write_to_flash_, false);
   pnh.param<bool>("factory_reset_before_start", factory_reset_before_start_, false);
   pnh.param<double>("linear_acceleration_stddev", linear_acceleration_stddev_, 0.0);
@@ -223,6 +245,11 @@ void VectorNavDriver::setupSensor()
   // Stop any sort of data coming from the sensor before writing a config
   logger_->debug("Turning off data streaming");
   sensor_.writeAsyncDataOutputType(VNOFF);
+
+  sensor_.writeImuFilteringConfiguration(mag_window_size_, accel_window_size_, gyro_window_size_,
+                                         temp_window_size_, pres_window_size_, mag_filter_mode_,
+                                         accel_filter_mode_, gyro_filter_mode_, temp_filter_mode_,
+                                         pres_filter_mode_);
 
   if (set_reference_frame_) {
     logger_->debug("Writing reference frame");

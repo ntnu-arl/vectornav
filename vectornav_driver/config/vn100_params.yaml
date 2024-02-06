@@ -55,6 +55,32 @@ reference_frame: [1, 0, 0,
                   0, 1, 0,
                   0, 0, 1]
 
+# IMU Filtering Configuration (Register 85)
+# This register allows the user to configure the FIR filtering what is applied to the IMU measurements. The
+# filter is a uniformly-weighted moving window (boxcar) filter of configurable size. The filtering does not affect
+# the values used by the internal filter, but only the output values
+
+# The WindowSize parameters for each sensor define the number of samples at the IMU rate (default 800Hz)
+# which will be averaged for each output measurement
+mag_window_size: 0
+accel_window_size: 4
+gyro_window_size: 4
+temp_window_size: 4
+pres_window_size: 4
+
+# The FilterMode parameters for each sensor select which output quantities the filtering should be applied to.
+# Filtering can be applied to either the uncompensated IMU measurements, compensated (HSI and biases
+# compensated by onboard filters, if applicable), or both.
+# 0 - No filtering
+# 1 - Only filter raw uncompensated measurements
+# 2 - Only filter compensated measurements
+# 3 - Filter both raw and compensated measurements
+mag_filter_mode: 0
+accel_filter_mode: 3
+gyro_filter_mode: 3
+temp_filter_mode: 3
+pres_filter_mode: 0
+
 # Write the new settings to the onboard flash
 write_to_flash: false
 
