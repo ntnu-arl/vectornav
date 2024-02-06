@@ -246,10 +246,9 @@ void VectorNavDriver::setupSensor()
   logger_->debug("Turning off data streaming");
   sensor_.writeAsyncDataOutputType(VNOFF);
 
-  sensor_.writeImuFilteringConfiguration(mag_window_size_, accel_window_size_, gyro_window_size_,
-                                         temp_window_size_, pres_window_size_, mag_filter_mode_,
-                                         accel_filter_mode_, gyro_filter_mode_, temp_filter_mode_,
-                                         pres_filter_mode_);
+  sensor_.writeImuFilteringConfiguration(
+    mag_window_size_, accel_window_size_, gyro_window_size_, temp_window_size_, pres_window_size_,
+    mag_filter_mode_, accel_filter_mode_, gyro_filter_mode_, temp_filter_mode_, pres_filter_mode_);
 
   if (set_reference_frame_) {
     logger_->debug("Writing reference frame");
