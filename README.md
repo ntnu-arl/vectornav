@@ -99,6 +99,15 @@ This driver has been tested on the following systems:
   - Ubuntu 20.04 arm64
   - Ubuntu 20.04 x86-64
 
+#### Known Issues
+
+The Seeed Studio A603 carrier board for the NVIDIA Orin NX has an issue with the kernel drivers for `usbserial`. Essentially, instead of using the `usbserial.ko` for the board which are modified by Seeed, the default `usbserial.ko` is used. This causes the FTDI driver to not work as expected. The solution is to move the `usbserial.ko` file which causes the new file from Seeed Studio to be used.
+
+```bash
+cd /lib/modules/5.10.120-tegra/kernel/drivers/usb/serial/
+sudo mv usbserial.ko usbserial.ko.bk
+```
+
 ## Additional Documentation
 
 - [VN100 Datasheet](https://www.vectornav.com/docs/default-source/datasheets/vn-100-datasheet-rev2.pdf?sfvrsn=8e35fd12_10)
