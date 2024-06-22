@@ -27,9 +27,9 @@
 #include <spdlog/spdlog.h>
 
 // C++
-#include <mutex>
 #include <condition_variable>
 #include <deque>
+#include <mutex>
 
 using namespace vn::protocol::uart;
 

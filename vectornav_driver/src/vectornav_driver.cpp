@@ -172,10 +172,8 @@ void VectorNavDriver::verifyParams()
     assert(orientation_covariance_[i] >= 0);
     assert(mag_covariance_[i] >= 0);
   }
-  if (use_sensor_sync_)
-  {
-    if (!is_triggered_)
-    {
+  if (use_sensor_sync_) {
+    if (!is_triggered_) {
       throw std::runtime_error("Sensor sync is enabled but is_triggered is false");
     }
   }
