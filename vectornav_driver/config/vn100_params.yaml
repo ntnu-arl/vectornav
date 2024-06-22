@@ -20,11 +20,11 @@ baud_rate: 921600
 async_mode: 2
 
 # imu sampling rate (800 Hz) divided by this value gives the output rate
-async_rate_divisor: 4
+async_rate_divisor: 1
 
 # Control whether the IMU is triggered by a pulse on the SYNCIN pin
 # If the IMU is triggered then the imu sampling rate is defined by the trigger
-is_triggered: false
+is_triggered: true
 
 # A pulse on the SYNCIN pin will trigger the IMU after skipping this many samples
 sync_in_skip_factor: 0
@@ -51,9 +51,7 @@ set_reference_frame: false
 
 # Rotation Matrix applied to the raw measurements before being processed in any way
 # This must be a orthonormal, right-handed matrix within tolerance of 1e-5 with each value between [-1,1]
-reference_frame: [1, 0, 0,
-                  0, 1, 0,
-                  0, 0, 1]
+reference_frame: [1, 0, 0, 0, 1, 0, 0, 0, 1]
 
 # IMU Filtering Configuration (Register 85)
 # This register allows the user to configure the FIR filtering what is applied to the IMU measurements. The
@@ -112,4 +110,4 @@ log_level:
   file: 1
   console: 1
 
-use_sensor_sync: false
+use_sensor_sync: true
