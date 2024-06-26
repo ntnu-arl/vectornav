@@ -74,9 +74,9 @@ pres_window_size: 4
 # 2 - Only filter compensated measurements
 # 3 - Filter both raw and compensated measurements
 mag_filter_mode: 0
-accel_filter_mode: 3
-gyro_filter_mode: 3
-temp_filter_mode: 3
+accel_filter_mode: 0
+gyro_filter_mode: 0
+temp_filter_mode: 0
 pres_filter_mode: 0
 
 # Write the new settings to the onboard flash
