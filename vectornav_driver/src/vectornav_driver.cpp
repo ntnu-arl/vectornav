@@ -457,7 +457,7 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
       pub_sync_out_stamp_.publish(msg);
     }
   }
-  
+
   // Time Sync In
   if (pub_time_sync_in_.getNumSubscribers() && cd.hasTimeSyncIn()) {
     sensor_msgs::TimeReference msg;
