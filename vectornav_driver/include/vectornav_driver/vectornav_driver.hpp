@@ -19,6 +19,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/MagneticField.h>
 #include <sensor_msgs/Temperature.h>
+#include <sensor_msgs/TimeReference.h>
 #include <std_srvs/Empty.h>
 
 // spdlog
@@ -62,6 +63,7 @@ private:
   ros::Publisher pub_pressure_;
   ros::Publisher pub_temperature_;
   ros::Publisher pub_sync_out_stamp_;
+  ros::Publisher pub_time_sync_in_;
 
   // Subscribers
   ros::Subscriber sub_trigger_stamp_;

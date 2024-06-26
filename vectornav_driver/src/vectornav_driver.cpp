@@ -75,6 +75,7 @@ VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
     sub_trigger_stamp_ = pnh.subscribe(
       "/sensor_sync_node/trigger_0", 10, &VectorNavDriver::triggerStampCallback, this,
       ros::TransportHints().tcpNoDelay());
+    pub_time_sync_in_ = pnh.advertise<sensor_msgs::TimeReference>("time_sync_in", 1000, false);
   }
 
   // Setup Services
@@ -455,6 +456,14 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
     } else {
       pub_sync_out_stamp_.publish(msg);
     }
+  }
+  
+  // Time Sync In
+  if (pub_time_sync_in_.getNumSubscribers() && cd.hasTimeSyncIn()) {
+    sensor_msgs::TimeReference msg;
+    msg.header.stamp = stamp;
+    msg.time_ref = ros::Time(0, cd.timeSyncIn());
+    pub_time_sync_in_.publish(msg);
   }
 
   // Filtered IMU
