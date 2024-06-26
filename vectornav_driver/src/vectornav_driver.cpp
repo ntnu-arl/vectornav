@@ -289,9 +289,8 @@ void VectorNavDriver::setupSensor()
   vn::sensors::BinaryOutputRegister bor(
     async_mode_, (use_sensor_sync_ ? 1 : async_rate_divisor_),
     (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT : COMMONGROUP_NONE) |
-      COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_IMU |
-      COMMONGROUP_MAGPRES,
-    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE), IMUGROUP_UNCOMPMAG, GPSGROUP_NONE,
+      COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_IMU,
+    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE), IMUGROUP_UNCOMPMAG | IMUGROUP_TEMP | IMUGROUP_PRES, GPSGROUP_NONE,
     ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
   vn::sensors::BinaryOutputRegister bor_none(
@@ -467,12 +466,6 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   if (pub_imu_data_.getNumSubscribers()) {
     populateImuMsg(cd, stamp, false);
     pub_imu_data_.publish(imu_data_msg_);
-  }
-
-  // Filtered Magnetic Field
-  if (pub_filter_mag_.getNumSubscribers()) {
-    populateMagMsg(cd, stamp, true);
-    pub_filter_mag_.publish(filter_mag_msg_);
   }
 
   // Magnetic Field
