@@ -61,21 +61,21 @@ VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
 
   // Setup Publishers
   logger_->debug("Setting up publishers");
-  pub_filter_data_ = pnh.advertise<sensor_msgs::Imu>("filter/data", 1000, false);
-  pub_imu_data_ = pnh.advertise<sensor_msgs::Imu>("imu/data", 1000, false);
-  pub_filter_mag_ = pnh.advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false);
-  pub_imu_mag_ = pnh.advertise<sensor_msgs::MagneticField>("imu/mag", 1000, false);
-  pub_temperature_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
-  pub_pressure_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
-  pub_sync_out_stamp_ = pnh.advertise<std_msgs::Header>("sync_out_stamp", 1000, false);
+  pub_filter_data_ = pnh.advertise<sensor_msgs::Imu>("filter/data", 20, false);
+  pub_imu_data_ = pnh.advertise<sensor_msgs::Imu>("imu/data", 20, false);
+  pub_filter_mag_ = pnh.advertise<sensor_msgs::MagneticField>("filter/mag", 20, false);
+  pub_imu_mag_ = pnh.advertise<sensor_msgs::MagneticField>("imu/mag", 20, false);
+  pub_temperature_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 20, false);
+  pub_pressure_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 20, false);
+  pub_sync_out_stamp_ = pnh.advertise<std_msgs::Header>("sync_out_stamp", 20, false);
 
   // Setup Subscribers
   if (use_sensor_sync_) {
     logger_->debug("Setting up subscribers");
     sub_trigger_stamp_ = pnh.subscribe(
-      "/sensor_sync_node/trigger_0", 10, &VectorNavDriver::triggerStampCallback, this,
+      "/sensor_sync_node/trigger_0", 20, &VectorNavDriver::triggerStampCallback, this,
       ros::TransportHints().tcpNoDelay());
-    pub_time_sync_in_ = pnh.advertise<sensor_msgs::TimeReference>("time_sync_in", 1000, false);
+    pub_time_sync_in_ = pnh.advertise<sensor_msgs::TimeReference>("time_sync_in", 20, false);
   }
 
   // Setup Services
