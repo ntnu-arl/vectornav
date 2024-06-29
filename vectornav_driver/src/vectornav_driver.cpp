@@ -76,6 +76,7 @@ VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
       "/sensor_sync_node/trigger_0", 20, &VectorNavDriver::triggerStampCallback, this,
       ros::TransportHints().tcpNoDelay());
     pub_time_sync_in_ = pnh.advertise<sensor_msgs::TimeReference>("time_sync_in", 20, false);
+    pub_ros_time_now_ = pnh.advertise<std_msgs::Header>("ros_time_now", 20, false);
   }
 
   // Setup Services
@@ -416,6 +417,7 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
   logger_->trace("Finished parsing binary async message");
 
+  ros::Time arrival_stamp = stamp;
   if (use_sensor_sync_) {
     // The time since the last SyncIn trigger event expressed in nano seconds.
     uint64_t time_sync_in = 0;
@@ -443,6 +445,13 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   }
 
   logger_->trace("Publishing parsed data");
+  // publish arrival stamp
+  {
+    std_msgs::Header msg;
+    msg.stamp = arrival_stamp;
+    pub_ros_time_now_.publish(msg);
+  }
+
   // Sync Out Stamp
   if (pub_sync_out_stamp_.getNumSubscribers() && cd.hasSyncOutCnt()) {
     std_msgs::Header msg;

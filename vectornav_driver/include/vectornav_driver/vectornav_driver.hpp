@@ -64,6 +64,7 @@ private:
   ros::Publisher pub_temperature_;
   ros::Publisher pub_sync_out_stamp_;
   ros::Publisher pub_time_sync_in_;
+  ros::Publisher pub_ros_time_now_;
 
   // Subscribers
   ros::Subscriber sub_trigger_stamp_;
