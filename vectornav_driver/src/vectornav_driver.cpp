@@ -360,7 +360,6 @@ void VectorNavDriver::getTriggerBasedStamp(
   {
     std::unique_lock<std::mutex> lock(trigger_stamp_deque_mutex_);
     if (trigger_stamp_deque_.empty()) {
-      logger_->warn("Waiting for trigger");
 
       auto tic = std::chrono::high_resolution_clock::now();
 
@@ -372,9 +371,12 @@ void VectorNavDriver::getTriggerBasedStamp(
       auto toc = std::chrono::high_resolution_clock::now();
       auto duration = std::chrono::duration_cast<std::chrono::microseconds>(toc - tic);
 
-      logger_->warn("\tDone waiting for trigger, took {}ms", duration.count() / 1e3);
-      count_[0]++;
-      logger_->info("error count: [{} waits for trigger, {} imu skips]\n", count_[0], count_[1]);
+      if (duration.count() > 5e3) {
+        logger_->warn("Waiting for trigger");
+        logger_->warn("\tDone waiting for trigger, took {}ms", duration.count() / 1e3);
+        count_[0]++;
+        logger_->info("error count: [{} waits for trigger, {} imu skips]\n", count_[0], count_[1]);
+      }
     }
 
     while (!trigger_stamp_deque_.empty()) {
@@ -391,7 +393,9 @@ void VectorNavDriver::getTriggerBasedStamp(
         count_[1]++;
         logger_->info("error count: [{} waits for trigger, {} imu skips]\n", count_[0], count_[1]);
       } else {
-        logger_->error("trigger count > sync_in_cnt, this should not happen");
+        logger_->error(
+          "trigger count ({}) > sync_in_cnt ({}), this should not happen", trigger_count,
+          sync_in_cnt);
         break;
       }
     }
@@ -431,6 +435,15 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
     uint32_t sync_in_cnt = 0;
     if (cd.hasSyncInCnt()) {
       sync_in_cnt = cd.syncInCnt();
+      static uint32_t prev_sync_in_cnt = 0;
+      if (prev_sync_in_cnt != 0){
+        if (sync_in_cnt - prev_sync_in_cnt != 1){
+          logger_->warn(
+            "sync_in_cnt ({}) did not increment by one wrt prev ({})", sync_in_cnt,
+            prev_sync_in_cnt);
+        }
+      }
+      prev_sync_in_cnt = sync_in_cnt;
     } else {
       logger_->error("No syncInCnt in message while using sensor sync");
       return;
@@ -589,7 +602,21 @@ void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const ros
 
 void VectorNavDriver::triggerStampCallback(const std_msgs::HeaderConstPtr msg)
 {
+  static size_t count = 0;
+
   std::lock_guard<std::mutex> lock(trigger_stamp_deque_mutex_);
+
+  if (count != 0){
+    const size_t diff = std::stoi(msg->frame_id) - count;
+    if (diff != async_rate_divisor_){
+      logger_->warn(
+        "trigger subscriber incremented by more than async_rate_divisor ({}), prev {} and curr {} "
+        "counts",
+        async_rate_divisor_, count, msg->frame_id);
+    }
+  }
+  count = std::stoi(msg->frame_id);
+
   logger_->debug("Added trigger for count: {}", msg->frame_id);
   trigger_stamp_deque_.push_back(*msg);
   trigger_stamp_deque_cv_.notify_one();
