@@ -658,6 +658,8 @@ void VnSensor::connect(const string &portName, uint32_t baudrate)
 {
 	_pi->pSerialPort = new SerialPort(portName, baudrate);
 
+  _pi->pSerialPort->setStopBits(SerialPort::TWO_STOP_BITS);
+
 	connect(dynamic_cast<IPort*>(_pi->pSerialPort));
 }
 
