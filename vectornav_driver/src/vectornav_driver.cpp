@@ -270,12 +270,9 @@ void VectorNavDriver::setupSensor()
   // Setup using the binary output registers. This is significantly faster than using ASCII output
   logger_->debug("Setting up binary output registers");
   vn::sensors::BinaryOutputRegister bor(
-    async_mode_, async_rate_divisor_,
-    (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT : COMMONGROUP_NONE) |
-      COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_IMU |
-      COMMONGROUP_MAGPRES,
-    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE), IMUGROUP_UNCOMPMAG, GPSGROUP_NONE,
-    ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
+      async_mode_, async_rate_divisor_, COMMONGROUP_NONE,
+      TIMEGROUP_SYNCOUTCNT, IMUGROUP_UNCOMPMAG | IMUGROUP_UNCOMPACCEL | IMUGROUP_UNCOMPGYRO | IMUGROUP_PRES, GPSGROUP_NONE,
+      ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
   vn::sensors::BinaryOutputRegister bor_none(
     ASYNCMODE_NONE, 1, COMMONGROUP_NONE, TIMEGROUP_NONE, IMUGROUP_NONE, GPSGROUP_NONE,
@@ -345,6 +342,12 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   logger_->trace("Parsing binary async message");
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
   logger_->trace("Finished parsing binary async message");
+
+  const std::string packet_data_str = p.datastr();
+  const size_t packet_length = packet_data_str.length(); // Get length from the string
+  // logger_->info("Packet data: {}", packet_data_str); // Log the data
+
+  logger_->debug("Packet size: {}", packet_length); // Log the length
 
   // The time since the last SyncIn trigger event expressed in nano seconds.
   uint64_t sync_in_time;
