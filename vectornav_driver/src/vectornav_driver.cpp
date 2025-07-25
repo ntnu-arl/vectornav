@@ -5,6 +5,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "vectornav_driver/vectornav_driver.hpp"
+#include <thread>
+#include <chrono>
 
 namespace vectornav_driver
 {
@@ -13,17 +15,17 @@ void callbackWrapper(void * user_data, Packet & p, size_t index)
   static_cast<VectorNavDriver *>(user_data)->binaryAsyncMessageCallback(p, index);
 }
 
-VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
+VectorNavDriver::VectorNavDriver() : Node("vectornav_driver_node")
 {
   // Get parameters
-  readParams(pnh);
+  readParams();
   verifyParams();
 
   // Setup logging sinks
   logger_console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   logger_console_sink_->set_level(console_log_level_);
   logger_file_sink_ = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-    log_directory_ + ros::this_node::getName() + ".log", true);
+    log_directory_ + this->get_name() + ".log", true);
   logger_file_sink_->set_level(file_log_level_);
 
   // Create logger
@@ -31,7 +33,7 @@ VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
   sinks.push_back(logger_console_sink_);
   sinks.push_back(logger_file_sink_);
   logger_ = std::make_shared<spdlog::logger>(
-    ros::this_node::getName() + "_logger", sinks.begin(), sinks.end());
+    std::string(this->get_name()) + "_logger", sinks.begin(), sinks.end());
   logger_->set_level(logger_log_level_);
   logger_->flush_on(logger_flush_log_level_);
 
@@ -61,86 +63,92 @@ VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
 
   // Setup Publishers
   logger_->debug("Setting up publishers");
-  pub_filter_data_ = pnh.advertise<sensor_msgs::Imu>("filter/data", 1000, false);
-  pub_imu_data_ = pnh.advertise<sensor_msgs::Imu>("imu/data", 1000, false);
-  pub_filter_mag_ = pnh.advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false);
-  pub_imu_mag_ = pnh.advertise<sensor_msgs::MagneticField>("imu/mag", 1000, false);
-  pub_temperature_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
-  pub_pressure_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
-  pub_sync_out_stamp_ = pnh.advertise<std_msgs::Header>("sync_out_stamp", 1000, false);
+  pub_filter_data_ = this->create_publisher<sensor_msgs::msg::Imu>("filter/data", 1000);
+  pub_imu_data_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data", 1000);
+  pub_filter_mag_ = this->create_publisher<sensor_msgs::msg::MagneticField>("filter/mag", 1000);
+  pub_imu_mag_ = this->create_publisher<sensor_msgs::msg::MagneticField>("imu/mag", 1000);
+  pub_temperature_ = this->create_publisher<sensor_msgs::msg::Temperature>("temperature", 1000);
+  pub_pressure_ = this->create_publisher<sensor_msgs::msg::FluidPressure>("pressure", 1000);
+  pub_sync_out_stamp_ = this->create_publisher<std_msgs::msg::UInt32>("sync_out_stamp", 1000);
 
   // Setup Services
   logger_->debug("Setting up services");
-  srv_reset_ = pnh.advertiseService("reset", &VectorNavDriver::resetServiceCallback, this);
+  srv_reset_ = this->create_service<std_srvs::srv::Empty>("reset", 
+    std::bind(&VectorNavDriver::resetServiceCallback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 VectorNavDriver::~VectorNavDriver() {}
 
-void VectorNavDriver::readParams(ros::NodeHandle & pnh)
+void VectorNavDriver::readParams()
 {
-  // Read parameters
+  // Declare and read parameters
   int i_param;
-  pnh.param<int>("sensor_family", i_param, 0);
+  i_param = this->declare_parameter("sensor_family", 1);
   sensor_family_ = static_cast<vn::sensors::VnSensor::Family>(i_param);
-  pnh.param<std::string>("port", port_, "/dev/ttyUSB0");
-  pnh.param<int>("baud_rate", i_param, 921600);
+  port_ = this->declare_parameter("port", std::string("/dev/ttyTHS1"));
+  i_param = this->declare_parameter("baud_rate", 921600);
   baud_rate_ = static_cast<uint32_t>(i_param);
-  pnh.param<int>("async_mode", i_param, 2);
+  i_param = this->declare_parameter("async_mode", 2);
   async_mode_ = static_cast<AsyncMode>(i_param);
-  pnh.param<int>("async_rate_divisor", i_param, 4);
+  i_param = this->declare_parameter("async_rate_divisor", 4);
   async_rate_divisor_ = static_cast<uint16_t>(i_param);
-  pnh.param<bool>("is_triggered", is_triggered_, false);
-  pnh.param<int>("sync_in_skip_factor", i_param, 0);
+  is_triggered_ = this->declare_parameter("is_triggered", false);
+  i_param = this->declare_parameter("sync_in_skip_factor", 0);
   sync_in_skip_factor_ = static_cast<uint16_t>(i_param);
-  pnh.param<bool>("is_triggering", is_triggering_, false);
-  pnh.param<int>("sync_out_skip_factor", i_param, 39);
+  is_triggering_ = this->declare_parameter("is_triggering", false);
+  i_param = this->declare_parameter("sync_out_skip_factor", 39);
   sync_out_skip_factor_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("sync_out_pulse_width", i_param, 1.0e+7);
-  pnh.param<bool>("publish_sync_out_stamp_on_change", publish_sync_out_stamp_on_change_, false);
+  i_param = this->declare_parameter("sync_out_pulse_width", static_cast<int>(1.0e+7));
   sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
-  pnh.param<std::string>("frame_id", frame_id_, "imu_link_ned");
-  pnh.param<bool>("set_reference_frame", set_reference_frame_, false);
-  XmlRpc::XmlRpcValue reference_frame_rpc;
-  pnh.getParam("reference_frame", reference_frame_rpc);
-  setMatrix(reference_frame_rpc, reference_frame_);
-  pnh.param<int>("mag_window_size", i_param, 0);
-  std::cout << "mag_window_size: " << i_param << "\n";
+  publish_sync_out_stamp_on_change_ = this->declare_parameter("publish_sync_out_stamp_on_change", false);
+  frame_id_ = this->declare_parameter("frame_id", std::string("imu_link_ned"));
+  set_reference_frame_ = this->declare_parameter("set_reference_frame", false);
+  
+  // Handle reference frame parameter (array)
+  std::vector<double> reference_frame_vec = this->declare_parameter("reference_frame", 
+    std::vector<double>{1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
+  if (reference_frame_vec.size() != 9) {
+    RCLCPP_WARN(this->get_logger(), "reference_frame parameter must have 9 elements, using identity matrix");
+    reference_frame_vec = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+  }
+  std::copy(reference_frame_vec.begin(), reference_frame_vec.end(), reference_frame_.begin());
+  
+  i_param = this->declare_parameter("mag_window_size", 0);
   mag_window_size_ = static_cast<uint16_t>(i_param);
-  std::cout << "mag_window_size_: " << mag_window_size_ << "\n";
-  pnh.param<int>("accel_window_size", i_param, 4);
+  i_param = this->declare_parameter("accel_window_size", 4);
   accel_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("gyro_window_size", i_param, 4);
+  i_param = this->declare_parameter("gyro_window_size", 4);
   gyro_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("temp_window_size", i_param, 4);
+  i_param = this->declare_parameter("temp_window_size", 4);
   temp_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("pres_window_size", i_param, 4);
+  i_param = this->declare_parameter("pres_window_size", 4);
   pres_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("mag_filter_mode", i_param, 0);
+  i_param = this->declare_parameter("mag_filter_mode", 0);
   mag_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("accel_filter_mode", i_param, 3);
+  i_param = this->declare_parameter("accel_filter_mode", 3);
   accel_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("gyro_filter_mode", i_param, 3);
+  i_param = this->declare_parameter("gyro_filter_mode", 3);
   gyro_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("temp_filter_mode", i_param, 3);
+  i_param = this->declare_parameter("temp_filter_mode", 3);
   temp_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("pres_filter_mode", i_param, 0);
+  i_param = this->declare_parameter("pres_filter_mode", 0);
   pres_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<bool>("write_to_flash", write_to_flash_, false);
-  pnh.param<bool>("factory_reset_before_start", factory_reset_before_start_, false);
-  pnh.param<double>("linear_acceleration_stddev", linear_acceleration_stddev_, 0.0);
-  pnh.param<double>("angular_velocity_stddev", angular_velocity_stddev_, 0.0);
-  pnh.param<double>("magnetic_field_stddev", magnetic_field_stddev_, 0.0);
-  pnh.param<double>("orientation_stddev", orientation_stddev_, 0.0);
-  pnh.param<double>("temperature_stddev", temperature_stddev_, 0.0);
-  pnh.param<double>("pressure_stddev", pressure_stddev_, 0.0);
-  pnh.param<std::string>("log_directory", log_directory_, "/tmp/vectornav_driver/");
-  pnh.param<int>("log_level/logger", i_param, 0);
+  write_to_flash_ = this->declare_parameter("write_to_flash", false);
+  factory_reset_before_start_ = this->declare_parameter("factory_reset_before_start", false);
+  linear_acceleration_stddev_ = this->declare_parameter("linear_acceleration_stddev", 0.0);
+  angular_velocity_stddev_ = this->declare_parameter("angular_velocity_stddev", 0.0);
+  magnetic_field_stddev_ = this->declare_parameter("magnetic_field_stddev", 0.0);
+  orientation_stddev_ = this->declare_parameter("orientation_stddev", 0.0);
+  temperature_stddev_ = this->declare_parameter("temperature_stddev", 0.0);
+  pressure_stddev_ = this->declare_parameter("pressure_stddev", 0.0);
+  log_directory_ = this->declare_parameter("log_directory", std::string("/tmp/vectornav_driver/"));
+  i_param = this->declare_parameter("log_level.logger", 2);
   logger_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
-  pnh.param<int>("log_level/flush", i_param, 0);
+  i_param = this->declare_parameter("log_level.flush", 1);
   logger_flush_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
-  pnh.param<int>("log_level/file", i_param, 0);
+  i_param = this->declare_parameter("log_level.file", 1);
   file_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
-  pnh.param<int>("log_level/console", i_param, 0);
+  i_param = this->declare_parameter("log_level.console", 1);
   console_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
 }
 
@@ -204,7 +212,7 @@ void VectorNavDriver::connectSensor()
         "Failed to connect to VectorNavDriver sensor at {} with baud rate {}. Retrying with other "
         "supported baud rates",
         port_, br);
-      ros::Duration(0.5).sleep();
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     // Reached the end of the supported baud rates and failed to connect
@@ -322,19 +330,21 @@ void VectorNavDriver::stopSensor()
   sensor_.disconnect();
 }
 
-bool VectorNavDriver::resetServiceCallback(
-  std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res)
+void VectorNavDriver::resetServiceCallback(
+  const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+  std::shared_ptr<std_srvs::srv::Empty::Response> response)
 {
+  (void)request;  // Unused parameter
+  (void)response; // Unused parameter
   logger_->info(
     "Resetting VectorNavDriver sensor. Internal Kalman Filter may take a few seconds to converge "
     "to correct accelerometer and gyro bias");
   resetSensor();
-  return true;
 }
 
 void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 {
-  const ros::Time arrival_stamp = ros::Time::now();
+  const rclcpp::Time arrival_stamp = this->now();
 
   static bool first = true;
   if (first) {
@@ -342,11 +352,17 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
     logger_->info("Receiving data");
   }
 
-  logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
+  logger_->trace("Received async message at timestamp: {}", arrival_stamp.seconds());
 
   logger_->trace("Parsing binary async message");
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
   logger_->trace("Finished parsing binary async message");
+
+  // const std::string packet_data_str = p.datastr();
+  // const size_t packet_length = packet_data_str.length();  // Get length from the string
+  // // logger_->info("Packet data: {}", packet_data_str); // Log the data
+
+  // logger_->debug("Packet size: {}", packet_length);  // Log the length
 
   // The time since the last SyncIn trigger event expressed in nano seconds.
   uint64_t sync_in_time;
@@ -354,61 +370,60 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 
   logger_->trace("Publishing parsed data");
   // Sync Out Stamp
-  if (pub_sync_out_stamp_.getNumSubscribers() && cd.hasSyncOutCnt()) {
-    std_msgs::Header msg;
-    msg.stamp = arrival_stamp;
-    msg.frame_id = std::to_string(cd.syncOutCnt());
+  if (pub_sync_out_stamp_->get_subscription_count() > 0 && cd.hasSyncOutCnt()) {
+    std_msgs::msg::UInt32 msg;
+    msg.data = cd.syncOutCnt();
     if (publish_sync_out_stamp_on_change_) {
       if (cd.syncOutCnt() != sync_out_count_) {
         sync_out_count_ = cd.syncOutCnt();
-        pub_sync_out_stamp_.publish(msg);
+        pub_sync_out_stamp_->publish(msg);
       }
     } else {
-      pub_sync_out_stamp_.publish(msg);
+      pub_sync_out_stamp_->publish(msg);
     }
   }
 
   // Filtered IMU
-  if (pub_filter_data_.getNumSubscribers()) {
+  if (pub_filter_data_->get_subscription_count() > 0) {
     populateImuMsg(cd, arrival_stamp, true);
-    pub_filter_data_.publish(filter_data_msg_);
+    pub_filter_data_->publish(filter_data_msg_);
   }
 
   // IMU
-  if (pub_imu_data_.getNumSubscribers()) {
+  if (pub_imu_data_->get_subscription_count() > 0) {
     populateImuMsg(cd, arrival_stamp, false);
-    pub_imu_data_.publish(imu_data_msg_);
+    pub_imu_data_->publish(imu_data_msg_);
   }
 
   // Filtered Magnetic Field
-  if (pub_filter_mag_.getNumSubscribers()) {
+  if (pub_filter_mag_->get_subscription_count() > 0) {
     populateMagMsg(cd, arrival_stamp, true);
-    pub_filter_mag_.publish(filter_mag_msg_);
+    pub_filter_mag_->publish(filter_mag_msg_);
   }
 
   // Magnetic Field
-  if (pub_imu_mag_.getNumSubscribers()) {
+  if (pub_imu_mag_->get_subscription_count() > 0) {
     populateMagMsg(cd, arrival_stamp, false);
-    pub_imu_mag_.publish(imu_mag_msg_);
+    pub_imu_mag_->publish(imu_mag_msg_);
   }
 
   // Temperature
-  if (pub_temperature_.getNumSubscribers()) {
+  if (pub_temperature_->get_subscription_count() > 0) {
     populateTempMsg(cd, arrival_stamp);
-    pub_temperature_.publish(temperature_msg_);
+    pub_temperature_->publish(temperature_msg_);
   }
 
   // Pressure
-  if (pub_pressure_.getNumSubscribers()) {
+  if (pub_pressure_->get_subscription_count() > 0) {
     populatePresMsg(cd, arrival_stamp);
-    pub_pressure_.publish(pressure_msg_);
+    pub_pressure_->publish(pressure_msg_);
   }
 }
 
 void VectorNavDriver::populateImuMsg(
-  vn::sensors::CompositeData & cd, const ros::Time & stamp, bool filter)
+  vn::sensors::CompositeData & cd, const rclcpp::Time & stamp, bool filter)
 {
-  sensor_msgs::Imu & msg = filter ? filter_data_msg_ : imu_data_msg_;
+  sensor_msgs::msg::Imu & msg = filter ? filter_data_msg_ : imu_data_msg_;
   msg.header.stamp = stamp;
 
   vn::math::vec3f acc, omega;  // m/s^2, rad/s
@@ -445,9 +460,9 @@ void VectorNavDriver::populateImuMsg(
 }
 
 void VectorNavDriver::populateMagMsg(
-  vn::sensors::CompositeData & cd, const ros::Time & stamp, bool filter)
+  vn::sensors::CompositeData & cd, const rclcpp::Time & stamp, bool filter)
 {
-  sensor_msgs::MagneticField & msg = filter ? filter_mag_msg_ : imu_mag_msg_;
+  sensor_msgs::msg::MagneticField & msg = filter ? filter_mag_msg_ : imu_mag_msg_;
   msg.header.stamp = stamp;
 
   vn::math::vec3f mag;  // gauss
@@ -472,14 +487,14 @@ void VectorNavDriver::populateMagMsg(
   msg.magnetic_field.z = mag[2];
 }
 
-void VectorNavDriver::populateTempMsg(vn::sensors::CompositeData & cd, const ros::Time & stamp)
+void VectorNavDriver::populateTempMsg(vn::sensors::CompositeData & cd, const rclcpp::Time & stamp)
 {
   logger_->trace("Populating Temperature message");
   temperature_msg_.header.stamp = stamp;
   temperature_msg_.temperature = cd.temperature();  // Celsius
 }
 
-void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const ros::Time & stamp)
+void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const rclcpp::Time & stamp)
 {
   logger_->trace("Populating Pressure message");
   pressure_msg_.header.stamp = stamp;

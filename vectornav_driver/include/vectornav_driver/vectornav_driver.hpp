@@ -14,12 +14,14 @@
 // vectornav_driver
 #include "vectornav_driver/utils.hpp"
 
-// ROS
-#include <sensor_msgs/FluidPressure.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/MagneticField.h>
-#include <sensor_msgs/Temperature.h>
-#include <std_srvs/Empty.h>
+// ROS2
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/fluid_pressure.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <sensor_msgs/msg/magnetic_field.hpp>
+#include <sensor_msgs/msg/temperature.hpp>
+#include <std_msgs/msg/u_int32.hpp>
+#include <std_srvs/srv/empty.hpp>
 
 // spdlog
 #include <spdlog/sinks/basic_file_sink.h>
@@ -30,30 +32,30 @@ using namespace vn::protocol::uart;
 
 namespace vectornav_driver
 {
-class VectorNavDriver
+class VectorNavDriver : public rclcpp::Node
 {
 private:
   // Members
   vn::sensors::VnSensor sensor_;
   // Member messages
-  sensor_msgs::Imu filter_data_msg_;
-  sensor_msgs::Imu imu_data_msg_;
-  sensor_msgs::MagneticField filter_mag_msg_;
-  sensor_msgs::MagneticField imu_mag_msg_;
-  sensor_msgs::FluidPressure pressure_msg_;
-  sensor_msgs::Temperature temperature_msg_;
+  sensor_msgs::msg::Imu filter_data_msg_;
+  sensor_msgs::msg::Imu imu_data_msg_;
+  sensor_msgs::msg::MagneticField filter_mag_msg_;
+  sensor_msgs::msg::MagneticField imu_mag_msg_;
+  sensor_msgs::msg::FluidPressure pressure_msg_;
+  sensor_msgs::msg::Temperature temperature_msg_;
 
   // Publishers
-  ros::Publisher pub_filter_data_;
-  ros::Publisher pub_imu_data_;
-  ros::Publisher pub_filter_mag_;
-  ros::Publisher pub_imu_mag_;
-  ros::Publisher pub_pressure_;
-  ros::Publisher pub_temperature_;
-  ros::Publisher pub_sync_out_stamp_;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr pub_filter_data_;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr pub_imu_data_;
+  rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr pub_filter_mag_;
+  rclcpp::Publisher<sensor_msgs::msg::MagneticField>::SharedPtr pub_imu_mag_;
+  rclcpp::Publisher<sensor_msgs::msg::FluidPressure>::SharedPtr pub_pressure_;
+  rclcpp::Publisher<sensor_msgs::msg::Temperature>::SharedPtr pub_temperature_;
+  rclcpp::Publisher<std_msgs::msg::UInt32>::SharedPtr pub_sync_out_stamp_;
 
   // Services
-  ros::ServiceServer srv_reset_;
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr srv_reset_;
 
   // Parameters
   vn::sensors::VnSensor::Family sensor_family_;
@@ -94,7 +96,7 @@ private:
   spdlog::level::level_enum file_log_level_;
   spdlog::level::level_enum console_log_level_;
   bool set_reference_frame_;
-  boost::array<double, 9ul> reference_frame_;
+  std::array<double, 9> reference_frame_;
   bool write_to_flash_;
   bool factory_reset_before_start_;
 
@@ -104,20 +106,21 @@ private:
   std::shared_ptr<spdlog::sinks::basic_file_sink_mt> logger_file_sink_;
 
 public:
-  VectorNavDriver(ros::NodeHandle & pnh);
+  VectorNavDriver();
   ~VectorNavDriver();
-  void readParams(ros::NodeHandle & pnh);
+  void readParams();
   void verifyParams();
   void connectSensor();
   void setupSensor();
   void resetSensor();
   void stopSensor();
-  bool resetServiceCallback(std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res);
+  void resetServiceCallback(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+                           std::shared_ptr<std_srvs::srv::Empty::Response> response);
   void binaryAsyncMessageCallback(Packet & p, size_t index);
-  void populateImuMsg(vn::sensors::CompositeData & cd, const ros::Time & time, bool filter);
-  void populateMagMsg(vn::sensors::CompositeData & cd, const ros::Time & time, bool filter);
-  void populateTempMsg(vn::sensors::CompositeData & cd, const ros::Time & time);
-  void populatePresMsg(vn::sensors::CompositeData & cd, const ros::Time & time);
+  void populateImuMsg(vn::sensors::CompositeData & cd, const rclcpp::Time & time, bool filter);
+  void populateMagMsg(vn::sensors::CompositeData & cd, const rclcpp::Time & time, bool filter);
+  void populateTempMsg(vn::sensors::CompositeData & cd, const rclcpp::Time & time);
+  void populatePresMsg(vn::sensors::CompositeData & cd, const rclcpp::Time & time);
 };
 }  // namespace vectornav_driver
 #endif  // VECTORNAV_DRIVER_VECTORNAV_DRIVER_HPP_

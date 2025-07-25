@@ -10,37 +10,24 @@
 // vnproglib
 #include "vn/vector.h"
 
-// ROS
-#include <ros/ros.h>
+// STL
+#include <array>
 
 namespace vectornav_driver
 {
-void setMatrix(const XmlRpc::XmlRpcValue & value_array, boost::array<double, 9ul> & matrix)
-{
-  assert(value_array.getType() == XmlRpc::XmlRpcValue::TypeArray);
-  assert(value_array.size() == 9);
-  for (int i = 0; i < value_array.size(); i++) {
-    // Use string stream here to avoid issues with parsing with decimal points
-    std::ostringstream ostr;
-    ostr << value_array[i];
-    std::istringstream istr(ostr.str());
-    istr >> matrix[i];
-  }
-}
-
-void setDiagonal(double value, boost::array<double, 9ul> & matrix)
+inline void setDiagonal(double value, std::array<double, 9> & matrix)
 {
   matrix[0] = value;
   matrix[4] = value;
   matrix[8] = value;
 }
 
-vn::math::vec3f convert(const std::array<float, 3> & arr)
+inline vn::math::vec3f convert(const std::array<float, 3> & arr)
 {
   return vn::math::vec3f(arr[0], arr[1], arr[2]);
 }
 
-vn::math::mat3f convert(boost::array<double, 9ul> & mat_b)
+inline vn::math::mat3f convert(std::array<double, 9> & mat_b)
 {
   vn::math::mat3f mat;
   for (int i = 0; i < 3; i++) {
