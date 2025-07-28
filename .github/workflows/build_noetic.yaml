@@ -20,12 +20,14 @@ jobs:
         apt-get install -y libspdlog-dev
         
     - name: Create catkin workspace
+      shell: bash
       run: |
         source /opt/ros/noetic/setup.bash
         mkdir -p /catkin_ws/src
         ln -s $GITHUB_WORKSPACE /catkin_ws/src/vectornav
         
     - name: Install ROS dependencies
+      shell: bash
       run: |
         source /opt/ros/noetic/setup.bash
         cd /catkin_ws
@@ -33,12 +35,14 @@ jobs:
         rosdep install --from-paths src --ignore-src -r -y --rosdistro noetic
         
     - name: Build package
+      shell: bash
       run: |
         source /opt/ros/noetic/setup.bash
         cd /catkin_ws
         catkin_make -DCMAKE_BUILD_TYPE=Release
         
     - name: Run tests
+      shell: bash
       run: |
         source /opt/ros/noetic/setup.bash
         cd /catkin_ws
