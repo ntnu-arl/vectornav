@@ -1,15 +1,50 @@
-name: Build Noetic
+name: Build
 
 on:
   workflow_dispatch:
   push:
 
 jobs:
-  build_noetic:
-    runs-on: ubuntu-22.04
+  build_and_test:
+    runs-on: ubuntu-latest
+    container:
+      image: ros:noetic-ros-base-focal
+    
     steps:
-      - uses: jspricke/ros-deb-builder-action@main
-        with:
-          ROS_DISTRO: noetic
-          DEB_DISTRO: focal
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        apt-get update
+        apt-get install -y libspdlog-dev
+        
+    - name: Create catkin workspace
+      shell: bash
+      run: |
+        source /opt/ros/noetic/setup.bash
+        mkdir -p /catkin_ws/src
+        ln -s $GITHUB_WORKSPACE /catkin_ws/src/vectornav
+        
+    - name: Install ROS dependencies
+      shell: bash
+      run: |
+        source /opt/ros/noetic/setup.bash
+        cd /catkin_ws
+        rosdep update --rosdistro noetic
+        rosdep install --from-paths src --ignore-src -r -y --rosdistro noetic
+        
+    - name: Build package
+      shell: bash
+      run: |
+        source /opt/ros/noetic/setup.bash
+        cd /catkin_ws
+        catkin_make -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Run tests
+      shell: bash
+      run: |
+        source /opt/ros/noetic/setup.bash
+        cd /catkin_ws
+        source devel/setup.bash
+        catkin_make run_tests
