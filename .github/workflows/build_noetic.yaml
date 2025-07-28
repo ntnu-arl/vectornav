@@ -1,10 +1,8 @@
 name: Build
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
 
 jobs:
   build_and_test:
@@ -44,3 +42,10 @@ jobs:
         source /opt/ros/noetic/setup.bash
         cd catkin_ws
         catkin_make -DCMAKE_BUILD_TYPE=Release
+
+    - name: Run tests
+      run: |
+        source /opt/ros/noetic/setup.bash
+        cd catkin_ws
+        source devel/setup.bash
+        catkin_make run_tests
