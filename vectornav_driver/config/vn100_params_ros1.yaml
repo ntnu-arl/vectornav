@@ -5,7 +5,7 @@
 sensor_family: 1
 
 # Port on which the VN-100 is connected
-port: /dev/ttyUSB_VN100
+port: /dev/ttyUSB0
 
 # This should be a value from the set [9600, 19200, 38400, 57600, 115200, 128000, 230400, 460800, 921600] chosen such that it is able to support the required data streaming rate
 baud_rate: 921600
@@ -17,7 +17,7 @@ baud_rate: 921600
 # 3 - Both ports
 # The cable from OEM connects on Port 1
 # A custom cable with an FTDI converter on pins 8 and 9 on the rugged version of the VN100 connects on Port 2
-async_mode: 2
+async_mode: 1
 
 # imu sampling rate (800 Hz) divided by this value gives the output rate
 async_rate_divisor: 4

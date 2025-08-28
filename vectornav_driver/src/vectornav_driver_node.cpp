@@ -8,11 +8,21 @@
 
 int main(int argc, char ** argv)
 {
+#if ROS_VERSION == 1
   ros::init(argc, argv, "vectornav_driver_node");
-  ros::NodeHandle pnh("~");
-  vectornav_driver::VectorNavDriver vnd(pnh);
-  vnd.setupSensor();
+  auto node = std::make_shared<ros::NodeHandle>("~");
+  auto vnd = std::make_shared<vectornav_driver::VectorNavDriver>(node);
+  vnd->setupSensor();
   ros::spin();
-  vnd.stopSensor();
+  vnd->stopSensor();
+#else
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<rclcpp::Node>("vectornav_driver_node");
+  auto vnd = std::make_shared<vectornav_driver::VectorNavDriver>(node);
+  vnd->setupSensor();
+  rclcpp::spin(node);
+  vnd->stopSensor();
+  rclcpp::shutdown();
+#endif
   return 0;
 }

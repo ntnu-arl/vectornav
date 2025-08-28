@@ -1,5 +1,5 @@
 <launch>
   <node pkg="vectornav_driver" type="vectornav_driver_node" name="vectornav_driver_node" output="screen"> # launch-prefix="gdb -ex run --args">
-    <rosparam command="load" file="$(find vectornav_driver)/config/vn100_params.yaml"/>
+    <rosparam command="load" file="$(find vectornav_driver)/config/vn100_params_ros1.yaml"/>
   </node>
 </launch>
