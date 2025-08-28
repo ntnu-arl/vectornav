@@ -7,6 +7,10 @@
 #ifndef VECTORNAV_DRIVER_VECTORNAV_DRIVER_HPP_
 #define VECTORNAV_DRIVER_VECTORNAV_DRIVER_HPP_
 
+// C++
+#include <chrono>
+#include <thread>
+
 // vnproglib
 #include "vn/compositedata.h"
 #include "vn/sensors.h"

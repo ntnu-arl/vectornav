@@ -204,7 +204,7 @@ void VectorNavDriver::connectSensor()
         "Failed to connect to VectorNavDriver sensor at {} with baud rate {}. Retrying with other "
         "supported baud rates",
         port_, br);
-      ros::Duration(0.5).sleep();
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     // Reached the end of the supported baud rates and failed to connect
