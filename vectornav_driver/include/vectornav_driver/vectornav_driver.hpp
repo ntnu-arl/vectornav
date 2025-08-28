@@ -19,7 +19,7 @@
 #include "vectornav_driver/utils.hpp"
 
 // ROS version-specific includes
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
 #include <ros/ros.h>
 #include <sensor_msgs/FluidPressure.h>
 #include <sensor_msgs/Imu.h>
@@ -46,7 +46,7 @@ using namespace vn::protocol::uart;
 
 namespace vectornav_driver
 {
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
 using NodeHandle = std::shared_ptr<ros::NodeHandle>;
 using Publisher = ros::Publisher;
 using Time = ros::Time;
@@ -67,7 +67,7 @@ using HeaderMsg = std_msgs::msg::Header;
 #endif
 
 class VectorNavDriver
-#if ROS_VERSION == 2
+#if DETECTED_ROS_VERSION == 2
   : public std::enable_shared_from_this<VectorNavDriver>
 #endif
 {
@@ -86,7 +86,7 @@ private:
   NodeHandle node_;
   
   // Publishers (using shared_ptr for both ROS1 and ROS2)
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   std::shared_ptr<ros::Publisher> pub_filter_data_;
   std::shared_ptr<ros::Publisher> pub_imu_data_;
   std::shared_ptr<ros::Publisher> pub_filter_mag_;
@@ -149,7 +149,7 @@ private:
   spdlog::level::level_enum file_log_level_;
   spdlog::level::level_enum console_log_level_;
   bool set_reference_frame_;
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   boost::array<double, 9ul> reference_frame_;
 #else
   std::array<double, 9> reference_frame_;
@@ -173,7 +173,7 @@ public:
   void resetSensor();
   void stopSensor();
   
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   bool resetServiceCallback(std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res);
 #else
   void resetServiceCallback(

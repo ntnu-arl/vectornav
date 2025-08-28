@@ -7,21 +7,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Detect ROS version
 find_package(roscpp QUIET)
 if(roscpp_FOUND)
-  set(ROS_VERSION 1)
+  set(DETECTED_ROS_VERSION 1)
   message(STATUS "Building with ROS1")
 else()
-  set(ROS_VERSION 2)
+  set(DETECTED_ROS_VERSION 2)
   message(STATUS "Building with ROS2")
 endif()
 
-add_definitions(-DROS_VERSION=${ROS_VERSION})
+add_definitions(-DDETECTED_ROS_VERSION=${DETECTED_ROS_VERSION})
 
 # Find common dependencies
 find_package(spdlog REQUIRED)
 add_subdirectory(vnproglib/cpp libvncxx)
 
 # ROS-specific dependencies and configuration
-if(ROS_VERSION EQUAL 1)
+if(DETECTED_ROS_VERSION EQUAL 1)
   # ROS1 setup
   find_package(catkin REQUIRED COMPONENTS
     roscpp
@@ -68,7 +68,7 @@ add_library(vectornav_driver src/vectornav_driver.cpp)
 add_executable(vectornav_driver_node src/vectornav_driver_node.cpp)
 
 # Link libraries and set dependencies
-if(ROS_VERSION EQUAL 1)
+if(DETECTED_ROS_VERSION EQUAL 1)
   target_link_libraries(vectornav_driver_node
     vectornav_driver
     libvncxx

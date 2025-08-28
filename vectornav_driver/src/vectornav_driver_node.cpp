@@ -8,7 +8,7 @@
 
 int main(int argc, char ** argv)
 {
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   ros::init(argc, argv, "vectornav_driver_node");
   auto node = std::make_shared<ros::NodeHandle>("~");
   auto vnd = std::make_shared<vectornav_driver::VectorNavDriver>(node);

@@ -22,7 +22,7 @@ VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
   // Setup logging sinks
   logger_console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   logger_console_sink_->set_level(console_log_level_);
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   std::string node_name = ros::this_node::getName();
 #else
   std::string node_name = node_->get_name();
@@ -66,7 +66,7 @@ VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
 
   // Setup Publishers
   logger_->debug("Setting up publishers");
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   pub_filter_data_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Imu>("filter/data", 1000, false));
   pub_imu_data_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Imu>("imu/data", 1000, false));
   pub_filter_mag_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false));
@@ -104,7 +104,7 @@ void VectorNavDriver::readParams()
 {
   // Read parameters
   int i_param;
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   node_->param<int>("sensor_family", i_param, 0);
   sensor_family_ = static_cast<vn::sensors::VnSensor::Family>(i_param);
   node_->param<std::string>("port", port_, "/dev/ttyUSB0");
@@ -169,7 +169,7 @@ void VectorNavDriver::readParams()
 #endif
 
   // Continue with remaining parameters for both ROS1 and ROS2
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   pnh.param<int>("mag_window_size", i_param, 0);
   std::cout << "mag_window_size: " << i_param << "\n";
   mag_window_size_ = static_cast<uint16_t>(i_param);
@@ -451,7 +451,7 @@ void VectorNavDriver::stopSensor()
   sensor_.disconnect();
 }
 
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
 bool VectorNavDriver::resetServiceCallback(
   std_srvs::Empty::Request & req, std_srvs::Empty::Response & res)
 {
@@ -475,7 +475,7 @@ void VectorNavDriver::resetServiceCallback(
 
 void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 {
-#if ROS_VERSION == 1
+#if DETECTED_ROS_VERSION == 1
   const Time arrival_stamp = ros::Time::now();
   logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
 #else
