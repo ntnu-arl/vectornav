@@ -27,16 +27,15 @@ VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
 #else
   std::string node_name = node_->get_name();
 #endif
-  logger_file_sink_ = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-    log_directory_ + node_name + ".log", true);
+  logger_file_sink_ =
+    std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_directory_ + node_name + ".log", true);
   logger_file_sink_->set_level(file_log_level_);
 
   // Create logger
   std::vector<spdlog::sink_ptr> sinks;
   sinks.push_back(logger_console_sink_);
   sinks.push_back(logger_file_sink_);
-  logger_ = std::make_shared<spdlog::logger>(
-    node_name + "_logger", sinks.begin(), sinks.end());
+  logger_ = std::make_shared<spdlog::logger>(node_name + "_logger", sinks.begin(), sinks.end());
   logger_->set_level(logger_log_level_);
   logger_->flush_on(logger_flush_log_level_);
 
@@ -67,17 +66,25 @@ VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
   // Setup Publishers
   logger_->debug("Setting up publishers");
 #if DETECTED_ROS_VERSION == 1
-  pub_filter_data_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Imu>("filter/data", 1000, false));
-  pub_imu_data_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Imu>("imu/data", 1000, false));
-  pub_filter_mag_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false));
-  pub_imu_mag_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::MagneticField>("imu/mag", 1000, false));
-  pub_temperature_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Temperature>("temperature", 1000, false));
-  pub_pressure_ = std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::FluidPressure>("pressure", 1000, false));
-  pub_sync_out_stamp_ = std::make_shared<ros::Publisher>(node_->advertise<std_msgs::Header>("sync_out_stamp", 1000, false));
+  pub_filter_data_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::Imu>("filter/data", 1000, false));
+  pub_imu_data_ =
+    std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Imu>("imu/data", 1000, false));
+  pub_filter_mag_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false));
+  pub_imu_mag_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::MagneticField>("imu/mag", 1000, false));
+  pub_temperature_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::Temperature>("temperature", 1000, false));
+  pub_pressure_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::FluidPressure>("pressure", 1000, false));
+  pub_sync_out_stamp_ = std::make_shared<ros::Publisher>(
+    node_->advertise<std_msgs::Header>("sync_out_stamp", 1000, false));
 
   // Setup Services
   logger_->debug("Setting up services");
-  srv_reset_ = std::make_shared<ros::ServiceServer>(node_->advertiseService("reset", &VectorNavDriver::resetServiceCallback, this));
+  srv_reset_ = std::make_shared<ros::ServiceServer>(
+    node_->advertiseService("reset", &VectorNavDriver::resetServiceCallback, this));
 #else
   pub_filter_data_ = node_->create_publisher<ImuMsg>("~/filter/data", 1000);
   pub_imu_data_ = node_->create_publisher<ImuMsg>("~/imu/data", 1000);
@@ -90,9 +97,9 @@ VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
   // Setup Services
   logger_->debug("Setting up services");
   srv_reset_ = node_->create_service<std_srvs::srv::Empty>(
-    "~/reset", 
-    [this](const std::shared_ptr<std_srvs::srv::Empty::Request> req,
-           std::shared_ptr<std_srvs::srv::Empty::Response> res) {
+    "~/reset", [this](
+                 const std::shared_ptr<std_srvs::srv::Empty::Request> req,
+                 std::shared_ptr<std_srvs::srv::Empty::Response> res) {
       this->resetServiceCallback(req, res);
     });
 #endif
@@ -156,7 +163,8 @@ void VectorNavDriver::readParams()
   node_->declare_parameter("sync_out_pulse_width", static_cast<int>(1.0e+7));
   i_param = node_->get_parameter("sync_out_pulse_width").as_int();
   node_->declare_parameter("publish_sync_out_stamp_on_change", false);
-  publish_sync_out_stamp_on_change_ = node_->get_parameter("publish_sync_out_stamp_on_change").as_bool();
+  publish_sync_out_stamp_on_change_ =
+    node_->get_parameter("publish_sync_out_stamp_on_change").as_bool();
   sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
   node_->declare_parameter("frame_id", "imu_link_ned");
   frame_id_ = node_->get_parameter("frame_id").as_string();

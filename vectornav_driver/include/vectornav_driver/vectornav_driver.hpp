@@ -68,7 +68,7 @@ using HeaderMsg = std_msgs::msg::Header;
 
 class VectorNavDriver
 #if DETECTED_ROS_VERSION == 2
-  : public std::enable_shared_from_this<VectorNavDriver>
+: public std::enable_shared_from_this<VectorNavDriver>
 #endif
 {
 private:
@@ -84,7 +84,7 @@ private:
 
   // Node handle (unified for both ROS1 and ROS2)
   NodeHandle node_;
-  
+
   // Publishers (using shared_ptr for both ROS1 and ROS2)
 #if DETECTED_ROS_VERSION == 1
   std::shared_ptr<ros::Publisher> pub_filter_data_;
@@ -172,7 +172,7 @@ public:
   void setupSensor();
   void resetSensor();
   void stopSensor();
-  
+
 #if DETECTED_ROS_VERSION == 1
   bool resetServiceCallback(std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res);
 #else
@@ -180,7 +180,7 @@ public:
     const std::shared_ptr<std_srvs::srv::Empty::Request> req,
     std::shared_ptr<std_srvs::srv::Empty::Response> res);
 #endif
-  
+
   void binaryAsyncMessageCallback(Packet & p, size_t index);
   void populateImuMsg(vn::sensors::CompositeData & cd, const Time & time, bool filter);
   void populateMagMsg(vn::sensors::CompositeData & cd, const Time & time, bool filter);

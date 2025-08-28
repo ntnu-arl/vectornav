@@ -15,8 +15,8 @@
 #include <ros/ros.h>
 #include <boost/array.hpp>
 #else
-#include <rclcpp/rclcpp.hpp>
 #include <array>
+#include <rclcpp/rclcpp.hpp>
 #endif
 
 namespace vectornav_driver
