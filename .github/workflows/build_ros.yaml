@@ -15,20 +15,25 @@ jobs:
     container: osrf/ros:${{ matrix.ros_distro }}-desktop-full
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
-        path: src/${{ github.event.repository.name }} # Checkout into a src directory for colcon
+        path: src/${{ github.event.repository.name }}
 
     - name: Install ROS dependencies (rosdep)
       run: |
         apt-get update
+        # Initialize rosdep if not already done
+        if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
+          rosdep init
+        fi
+        # Update rosdep as regular user (non-sudo)
+        rosdep update --include-eol-distros
         rosdep install --from-paths src --ignore-src -y --rosdistro ${{ matrix.ros_distro }}
       shell: bash
 
     - name: Build ROS package with colcon
       run: |
         source /opt/ros/${{ matrix.ros_distro }}/setup.bash
-        cd src/${{ github.event.repository.name }}
         colcon build --symlink-install
       shell: bash
 
@@ -41,13 +46,19 @@ jobs:
     container: osrf/ros:${{ matrix.ros_distro }}-desktop-full
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: src/${{ github.event.repository.name }}
 
     - name: Install ROS dependencies (rosdep)
       run: |
         apt-get update
+        # Initialize rosdep if not already done
+        if [ ! -f /etc/ros/rosdep/sources.list.d/20-default.list ]; then
+          rosdep init
+        fi
+        # Update rosdep as regular user (non-sudo)
+        rosdep update --include-eol-distros
         rosdep install --from-paths src --ignore-src -y --rosdistro ${{ matrix.ros_distro }}
       shell: bash
 
