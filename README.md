@@ -1,7 +1,7 @@
 # vectornav_driver
 
 [![Formatting (pre-commit)](https://github.com/ntnu-arl/vectornav/actions/workflows/format.yaml/badge.svg?event=push)](https://github.com/ntnu-arl/vectornav/actions/workflows/format.yaml)
-[![ROS Noetic](https://github.com/ntnu-arl/vectornav/actions/workflows/build_noetic.yaml/badge.svg?=event=push)](https://github.com/ntnu-arl/vectornav/actions/workflows/build_noetic.yaml)
+[![ROS Packages](https://github.com/ntnu-arl/vectornav/actions/workflows/build_ros.yaml/badge.svg?=event=push)](https://github.com/ntnu-arl/vectornav/actions/workflows/build_ros.yaml)
 
 A minimal driver for VectorNav IMUs
 
@@ -15,13 +15,25 @@ sudo apt-get install libspdlog-dev
 
 ### Setup build
 
+#### ROS2
+
+```bash
+mkdir -p colcon_ws/src
+cd colcon_ws/src
+git clone git@github.com:ntnu-arl/vectornav.git
+cd ..
+colcon build --packages-select vectornav_driver
+```
+
+#### ROS1
+
 ```bash
 mkdir -p catkin_ws/src
 cd catkin_ws/src
 git clone git@github.com:ntnu-arl/vectornav.git
 cd ..
 catkin config -DCMAKE_BUILD_TYPE=Release
-catkin build
+catkin build vectornav_driver
 ```
 
 ## Usage
@@ -63,8 +75,7 @@ Service Name | Service Type | Description
 4. Copy the `vectornav_driver/udev/99-vn100.rules` file to `/etc/udev/rules.d/`.
 
     ```bash
-    cd catkin_ws/src
-    sudo cp vectornav/vectornav_driver/udev/* /etc/udev/rules.d/
+    sudo cp vectornav_driver/udev/* /etc/udev/rules.d/
     sudo udevadm control --reload-rules && udevadm trigger
     ```
 
@@ -78,9 +89,28 @@ Note:
 3. You may need to unplug and replug the IMU to make the udev rule take effect.
 4. If the udev rules do not load, you may need to restart the computer. This only needs to be done once during the setup.
 
-### Setting up the parameters
+### Running
 
-Modify the `vectornav_driver/config/vn100_params.yaml` per your requirements.
+#### ROS2
+
+Modify the `vectornav_driver/config/vn100_params_ros2.yaml` per your requirements.
+Launch the node with:
+
+```bash
+cd colcon_ws
+source install/setup.bash
+ros2 launch vectornav_driver vectornav_driver_ros2.py
+```
+
+#### ROS1
+
+Modify the `vectornav_driver/config/vn100_params_ros1.yaml` per your requirements.
+
+```bash
+cd catkin_ws
+source devel/setup.bash
+roslaunch vectornav_driver vectornav_driver.launch
+```
 
 ### Running the node
 
@@ -95,9 +125,10 @@ roslaunch vectornav_driver vectornav_driver.launch
 This driver has been tested on the following systems:
 
 - VN100 Rugged - USB:
-  - Pop OS 20.04 x86-64
+  - Pop OS 20.04 amd64
   - Ubuntu 20.04 arm64
-  - Ubuntu 20.04 x86-64
+  - Ubuntu 20.04 amd64
+  - Ubuntu 24.04 amd64
 
 #### Known Issues
 
