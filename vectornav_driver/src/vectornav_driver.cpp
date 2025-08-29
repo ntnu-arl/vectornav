@@ -13,25 +13,29 @@ void callbackWrapper(void * user_data, Packet & p, size_t index)
   static_cast<VectorNavDriver *>(user_data)->binaryAsyncMessageCallback(p, index);
 }
 
-VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
+VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
 {
   // Get parameters
-  readParams(pnh);
+  readParams();
   verifyParams();
 
   // Setup logging sinks
   logger_console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   logger_console_sink_->set_level(console_log_level_);
-  logger_file_sink_ = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-    log_directory_ + ros::this_node::getName() + ".log", true);
+#if DETECTED_ROS_VERSION == 1
+  std::string node_name = ros::this_node::getName();
+#else
+  std::string node_name = node_->get_name();
+#endif
+  logger_file_sink_ =
+    std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_directory_ + node_name + ".log", true);
   logger_file_sink_->set_level(file_log_level_);
 
   // Create logger
   std::vector<spdlog::sink_ptr> sinks;
   sinks.push_back(logger_console_sink_);
   sinks.push_back(logger_file_sink_);
-  logger_ = std::make_shared<spdlog::logger>(
-    ros::this_node::getName() + "_logger", sinks.begin(), sinks.end());
+  logger_ = std::make_shared<spdlog::logger>(node_name + "_logger", sinks.begin(), sinks.end());
   logger_->set_level(logger_log_level_);
   logger_->flush_on(logger_flush_log_level_);
 
@@ -61,87 +65,220 @@ VectorNavDriver::VectorNavDriver(ros::NodeHandle & pnh)
 
   // Setup Publishers
   logger_->debug("Setting up publishers");
-  pub_filter_data_ = pnh.advertise<sensor_msgs::Imu>("filter/data", 1000, false);
-  pub_imu_data_ = pnh.advertise<sensor_msgs::Imu>("imu/data", 1000, false);
-  pub_filter_mag_ = pnh.advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false);
-  pub_imu_mag_ = pnh.advertise<sensor_msgs::MagneticField>("imu/mag", 1000, false);
-  pub_temperature_ = pnh.advertise<sensor_msgs::Temperature>("temperature", 1000, false);
-  pub_pressure_ = pnh.advertise<sensor_msgs::FluidPressure>("pressure", 1000, false);
-  pub_sync_out_stamp_ = pnh.advertise<std_msgs::Header>("sync_out_stamp", 1000, false);
+#if DETECTED_ROS_VERSION == 1
+  pub_filter_data_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::Imu>("filter/data", 1000, false));
+  pub_imu_data_ =
+    std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Imu>("imu/data", 1000, false));
+  pub_filter_mag_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false));
+  pub_imu_mag_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::MagneticField>("imu/mag", 1000, false));
+  pub_temperature_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::Temperature>("temperature", 1000, false));
+  pub_pressure_ = std::make_shared<ros::Publisher>(
+    node_->advertise<sensor_msgs::FluidPressure>("pressure", 1000, false));
+  pub_sync_out_stamp_ = std::make_shared<ros::Publisher>(
+    node_->advertise<std_msgs::Header>("sync_out_stamp", 1000, false));
 
   // Setup Services
   logger_->debug("Setting up services");
-  srv_reset_ = pnh.advertiseService("reset", &VectorNavDriver::resetServiceCallback, this);
+  srv_reset_ = std::make_shared<ros::ServiceServer>(
+    node_->advertiseService("reset", &VectorNavDriver::resetServiceCallback, this));
+#else
+  pub_filter_data_ = node_->create_publisher<ImuMsg>("~/filter/data", 1000);
+  pub_imu_data_ = node_->create_publisher<ImuMsg>("~/imu/data", 1000);
+  pub_filter_mag_ = node_->create_publisher<MagneticFieldMsg>("~/filter/mag", 1000);
+  pub_imu_mag_ = node_->create_publisher<MagneticFieldMsg>("~/imu/mag", 1000);
+  pub_temperature_ = node_->create_publisher<TemperatureMsg>("~/temperature", 1000);
+  pub_pressure_ = node_->create_publisher<FluidPressureMsg>("~/pressure", 1000);
+  pub_sync_out_stamp_ = node_->create_publisher<HeaderMsg>("~/sync_out_stamp", 1000);
+
+  // Setup Services
+  logger_->debug("Setting up services");
+  srv_reset_ = node_->create_service<std_srvs::srv::Empty>(
+    "~/reset", [this](
+                 const std::shared_ptr<std_srvs::srv::Empty::Request> req,
+                 std::shared_ptr<std_srvs::srv::Empty::Response> res) {
+      this->resetServiceCallback(req, res);
+    });
+#endif
 }
 
 VectorNavDriver::~VectorNavDriver() {}
 
-void VectorNavDriver::readParams(ros::NodeHandle & pnh)
+void VectorNavDriver::readParams()
 {
   // Read parameters
   int i_param;
-  pnh.param<int>("sensor_family", i_param, 0);
+#if DETECTED_ROS_VERSION == 1
+  node_->param<int>("sensor_family", i_param, 0);
   sensor_family_ = static_cast<vn::sensors::VnSensor::Family>(i_param);
-  pnh.param<std::string>("port", port_, "/dev/ttyUSB0");
-  pnh.param<int>("baud_rate", i_param, 921600);
+  node_->param<std::string>("port", port_, "/dev/ttyUSB0");
+  node_->param<int>("baud_rate", i_param, 921600);
   baud_rate_ = static_cast<uint32_t>(i_param);
-  pnh.param<int>("async_mode", i_param, 2);
+  node_->param<int>("async_mode", i_param, 2);
   async_mode_ = static_cast<AsyncMode>(i_param);
-  pnh.param<int>("async_rate_divisor", i_param, 4);
+  node_->param<int>("async_rate_divisor", i_param, 4);
   async_rate_divisor_ = static_cast<uint16_t>(i_param);
-  pnh.param<bool>("is_triggered", is_triggered_, false);
-  pnh.param<int>("sync_in_skip_factor", i_param, 0);
+  node_->param<bool>("is_triggered", is_triggered_, false);
+  node_->param<int>("sync_in_skip_factor", i_param, 0);
   sync_in_skip_factor_ = static_cast<uint16_t>(i_param);
-  pnh.param<bool>("is_triggering", is_triggering_, false);
-  pnh.param<int>("sync_out_skip_factor", i_param, 39);
+  node_->param<bool>("is_triggering", is_triggering_, false);
+  node_->param<int>("sync_out_skip_factor", i_param, 39);
   sync_out_skip_factor_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("sync_out_pulse_width", i_param, 1.0e+7);
-  pnh.param<bool>("publish_sync_out_stamp_on_change", publish_sync_out_stamp_on_change_, false);
+  node_->param<int>("sync_out_pulse_width", i_param, 1.0e+7);
+  node_->param<bool>("publish_sync_out_stamp_on_change", publish_sync_out_stamp_on_change_, false);
   sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
-  pnh.param<std::string>("frame_id", frame_id_, "imu_link_ned");
-  pnh.param<bool>("set_reference_frame", set_reference_frame_, false);
+  node_->param<std::string>("frame_id", frame_id_, "imu_link_ned");
+  node_->param<bool>("set_reference_frame", set_reference_frame_, false);
   XmlRpc::XmlRpcValue reference_frame_rpc;
-  pnh.getParam("reference_frame", reference_frame_rpc);
+  node_->getParam("reference_frame", reference_frame_rpc);
   setMatrix(reference_frame_rpc, reference_frame_);
-  pnh.param<int>("mag_window_size", i_param, 0);
+#else
+  node_->declare_parameter("sensor_family", 0);
+  i_param = node_->get_parameter("sensor_family").as_int();
+  sensor_family_ = static_cast<vn::sensors::VnSensor::Family>(i_param);
+  node_->declare_parameter("port", "/dev/ttyUSB0");
+  port_ = node_->get_parameter("port").as_string();
+  node_->declare_parameter("baud_rate", 921600);
+  i_param = node_->get_parameter("baud_rate").as_int();
+  baud_rate_ = static_cast<uint32_t>(i_param);
+  node_->declare_parameter("async_mode", 2);
+  i_param = node_->get_parameter("async_mode").as_int();
+  async_mode_ = static_cast<AsyncMode>(i_param);
+  node_->declare_parameter("async_rate_divisor", 4);
+  i_param = node_->get_parameter("async_rate_divisor").as_int();
+  async_rate_divisor_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("is_triggered", false);
+  is_triggered_ = node_->get_parameter("is_triggered").as_bool();
+  node_->declare_parameter("sync_in_skip_factor", 0);
+  i_param = node_->get_parameter("sync_in_skip_factor").as_int();
+  sync_in_skip_factor_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("is_triggering", false);
+  is_triggering_ = node_->get_parameter("is_triggering").as_bool();
+  node_->declare_parameter("sync_out_skip_factor", 39);
+  i_param = node_->get_parameter("sync_out_skip_factor").as_int();
+  sync_out_skip_factor_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("sync_out_pulse_width", static_cast<int>(1.0e+7));
+  i_param = node_->get_parameter("sync_out_pulse_width").as_int();
+  node_->declare_parameter("publish_sync_out_stamp_on_change", false);
+  publish_sync_out_stamp_on_change_ =
+    node_->get_parameter("publish_sync_out_stamp_on_change").as_bool();
+  sync_out_pulse_width_ = static_cast<uint32_t>(i_param);
+  node_->declare_parameter("frame_id", "imu_link_ned");
+  frame_id_ = node_->get_parameter("frame_id").as_string();
+  node_->declare_parameter("set_reference_frame", false);
+  set_reference_frame_ = node_->get_parameter("set_reference_frame").as_bool();
+  std::vector<double> default_reference_frame = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
+  node_->declare_parameter("reference_frame", default_reference_frame);
+  auto reference_frame_param = node_->get_parameter("reference_frame").as_double_array();
+  setMatrix(reference_frame_param, reference_frame_);
+#endif
+
+  // Continue with remaining parameters for both ROS1 and ROS2
+#if DETECTED_ROS_VERSION == 1
+  node_->param<int>("mag_window_size", i_param, 0);
   std::cout << "mag_window_size: " << i_param << "\n";
   mag_window_size_ = static_cast<uint16_t>(i_param);
   std::cout << "mag_window_size_: " << mag_window_size_ << "\n";
-  pnh.param<int>("accel_window_size", i_param, 4);
+  node_->param<int>("accel_window_size", i_param, 4);
   accel_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("gyro_window_size", i_param, 4);
+  node_->param<int>("gyro_window_size", i_param, 4);
   gyro_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("temp_window_size", i_param, 4);
+  node_->param<int>("temp_window_size", i_param, 4);
   temp_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("pres_window_size", i_param, 4);
+  node_->param<int>("pres_window_size", i_param, 4);
   pres_window_size_ = static_cast<uint16_t>(i_param);
-  pnh.param<int>("mag_filter_mode", i_param, 0);
+  node_->param<int>("mag_filter_mode", i_param, 0);
   mag_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("accel_filter_mode", i_param, 3);
+  node_->param<int>("accel_filter_mode", i_param, 3);
   accel_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("gyro_filter_mode", i_param, 3);
+  node_->param<int>("gyro_filter_mode", i_param, 3);
   gyro_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("temp_filter_mode", i_param, 3);
+  node_->param<int>("temp_filter_mode", i_param, 3);
   temp_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<int>("pres_filter_mode", i_param, 0);
+  node_->param<int>("pres_filter_mode", i_param, 0);
   pres_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
-  pnh.param<bool>("write_to_flash", write_to_flash_, false);
-  pnh.param<bool>("factory_reset_before_start", factory_reset_before_start_, false);
-  pnh.param<double>("linear_acceleration_stddev", linear_acceleration_stddev_, 0.0);
-  pnh.param<double>("angular_velocity_stddev", angular_velocity_stddev_, 0.0);
-  pnh.param<double>("magnetic_field_stddev", magnetic_field_stddev_, 0.0);
-  pnh.param<double>("orientation_stddev", orientation_stddev_, 0.0);
-  pnh.param<double>("temperature_stddev", temperature_stddev_, 0.0);
-  pnh.param<double>("pressure_stddev", pressure_stddev_, 0.0);
-  pnh.param<std::string>("log_directory", log_directory_, "/tmp/vectornav_driver/");
-  pnh.param<int>("log_level/logger", i_param, 0);
+  node_->param<bool>("write_to_flash", write_to_flash_, false);
+  node_->param<bool>("factory_reset_before_start", factory_reset_before_start_, false);
+  node_->param<double>("linear_acceleration_stddev", linear_acceleration_stddev_, 0.0);
+  node_->param<double>("angular_velocity_stddev", angular_velocity_stddev_, 0.0);
+  node_->param<double>("magnetic_field_stddev", magnetic_field_stddev_, 0.0);
+  node_->param<double>("orientation_stddev", orientation_stddev_, 0.0);
+  node_->param<double>("temperature_stddev", temperature_stddev_, 0.0);
+  node_->param<double>("pressure_stddev", pressure_stddev_, 0.0);
+  node_->param<std::string>("log_directory", log_directory_, "/tmp/vectornav_driver/");
+  node_->param<int>("log_level/logger", i_param, 0);
   logger_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
-  pnh.param<int>("log_level/flush", i_param, 0);
+  node_->param<int>("log_level/flush", i_param, 0);
   logger_flush_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
-  pnh.param<int>("log_level/file", i_param, 0);
+  node_->param<int>("log_level/file", i_param, 0);
   file_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
-  pnh.param<int>("log_level/console", i_param, 0);
+  node_->param<int>("log_level/console", i_param, 0);
   console_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+#else
+  node_->declare_parameter("mag_window_size", 0);
+  i_param = node_->get_parameter("mag_window_size").as_int();
+  mag_window_size_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("accel_window_size", 4);
+  i_param = node_->get_parameter("accel_window_size").as_int();
+  accel_window_size_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("gyro_window_size", 4);
+  i_param = node_->get_parameter("gyro_window_size").as_int();
+  gyro_window_size_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("temp_window_size", 4);
+  i_param = node_->get_parameter("temp_window_size").as_int();
+  temp_window_size_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("pres_window_size", 4);
+  i_param = node_->get_parameter("pres_window_size").as_int();
+  pres_window_size_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("mag_filter_mode", 0);
+  i_param = node_->get_parameter("mag_filter_mode").as_int();
+  mag_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  node_->declare_parameter("accel_filter_mode", 3);
+  i_param = node_->get_parameter("accel_filter_mode").as_int();
+  accel_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  node_->declare_parameter("gyro_filter_mode", 3);
+  i_param = node_->get_parameter("gyro_filter_mode").as_int();
+  gyro_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  node_->declare_parameter("temp_filter_mode", 3);
+  i_param = node_->get_parameter("temp_filter_mode").as_int();
+  temp_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  node_->declare_parameter("pres_filter_mode", 0);
+  i_param = node_->get_parameter("pres_filter_mode").as_int();
+  pres_filter_mode_ = static_cast<vn::protocol::uart::FilterMode>(i_param);
+  node_->declare_parameter("write_to_flash", false);
+  write_to_flash_ = node_->get_parameter("write_to_flash").as_bool();
+  node_->declare_parameter("factory_reset_before_start", false);
+  factory_reset_before_start_ = node_->get_parameter("factory_reset_before_start").as_bool();
+  node_->declare_parameter("linear_acceleration_stddev", 0.0);
+  linear_acceleration_stddev_ = node_->get_parameter("linear_acceleration_stddev").as_double();
+  node_->declare_parameter("angular_velocity_stddev", 0.0);
+  angular_velocity_stddev_ = node_->get_parameter("angular_velocity_stddev").as_double();
+  node_->declare_parameter("magnetic_field_stddev", 0.0);
+  magnetic_field_stddev_ = node_->get_parameter("magnetic_field_stddev").as_double();
+  node_->declare_parameter("orientation_stddev", 0.0);
+  orientation_stddev_ = node_->get_parameter("orientation_stddev").as_double();
+  node_->declare_parameter("temperature_stddev", 0.0);
+  temperature_stddev_ = node_->get_parameter("temperature_stddev").as_double();
+  node_->declare_parameter("pressure_stddev", 0.0);
+  pressure_stddev_ = node_->get_parameter("pressure_stddev").as_double();
+  node_->declare_parameter("log_directory", "/tmp/vectornav_driver/");
+  log_directory_ = node_->get_parameter("log_directory").as_string();
+  node_->declare_parameter("log_level.logger", 0);
+  i_param = node_->get_parameter("log_level.logger").as_int();
+  logger_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  node_->declare_parameter("log_level.flush", 0);
+  i_param = node_->get_parameter("log_level.flush").as_int();
+  logger_flush_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  node_->declare_parameter("log_level.file", 0);
+  i_param = node_->get_parameter("log_level.file").as_int();
+  file_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+  node_->declare_parameter("log_level.console", 0);
+  i_param = node_->get_parameter("log_level.console").as_int();
+  console_log_level_ = static_cast<spdlog::level::level_enum>(i_param);
+#endif
 }
 
 void VectorNavDriver::verifyParams()
@@ -204,7 +341,7 @@ void VectorNavDriver::connectSensor()
         "Failed to connect to VectorNavDriver sensor at {} with baud rate {}. Retrying with other "
         "supported baud rates",
         port_, br);
-      ros::Duration(0.5).sleep();
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     // Reached the end of the supported baud rates and failed to connect
@@ -322,8 +459,9 @@ void VectorNavDriver::stopSensor()
   sensor_.disconnect();
 }
 
+#if DETECTED_ROS_VERSION == 1
 bool VectorNavDriver::resetServiceCallback(
-  std_srvs::EmptyRequest & req, std_srvs::EmptyResponse & res)
+  std_srvs::Empty::Request & req, std_srvs::Empty::Response & res)
 {
   logger_->info(
     "Resetting VectorNavDriver sensor. Internal Kalman Filter may take a few seconds to converge "
@@ -331,18 +469,33 @@ bool VectorNavDriver::resetServiceCallback(
   resetSensor();
   return true;
 }
+#else
+void VectorNavDriver::resetServiceCallback(
+  const std::shared_ptr<std_srvs::srv::Empty::Request> req,
+  std::shared_ptr<std_srvs::srv::Empty::Response> res)
+{
+  logger_->info(
+    "Resetting VectorNavDriver sensor. Internal Kalman Filter may take a few seconds to converge "
+    "to correct accelerometer and gyro bias");
+  resetSensor();
+}
+#endif
 
 void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 {
-  const ros::Time arrival_stamp = ros::Time::now();
+#if DETECTED_ROS_VERSION == 1
+  const Time arrival_stamp = ros::Time::now();
+  logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
+#else
+  const Time arrival_stamp = node_->get_clock()->now();
+  logger_->trace("Received async message at timestamp: {}", arrival_stamp.seconds());
+#endif
 
   static bool first = true;
   if (first) {
     first = false;
     logger_->info("Receiving data");
   }
-
-  logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
 
   logger_->trace("Parsing binary async message");
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
@@ -354,61 +507,61 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 
   logger_->trace("Publishing parsed data");
   // Sync Out Stamp
-  if (pub_sync_out_stamp_.getNumSubscribers() && cd.hasSyncOutCnt()) {
-    std_msgs::Header msg;
+  if (hasSubscribers(pub_sync_out_stamp_) && cd.hasSyncOutCnt()) {
+    HeaderMsg msg;
     msg.stamp = arrival_stamp;
     msg.frame_id = std::to_string(cd.syncOutCnt());
     if (publish_sync_out_stamp_on_change_) {
       if (cd.syncOutCnt() != sync_out_count_) {
         sync_out_count_ = cd.syncOutCnt();
-        pub_sync_out_stamp_.publish(msg);
+        pub_sync_out_stamp_->publish(msg);
       }
     } else {
-      pub_sync_out_stamp_.publish(msg);
+      pub_sync_out_stamp_->publish(msg);
     }
   }
 
   // Filtered IMU
-  if (pub_filter_data_.getNumSubscribers()) {
+  if (hasSubscribers(pub_filter_data_)) {
     populateImuMsg(cd, arrival_stamp, true);
-    pub_filter_data_.publish(filter_data_msg_);
+    pub_filter_data_->publish(filter_data_msg_);
   }
 
   // IMU
-  if (pub_imu_data_.getNumSubscribers()) {
+  if (hasSubscribers(pub_imu_data_)) {
     populateImuMsg(cd, arrival_stamp, false);
-    pub_imu_data_.publish(imu_data_msg_);
+    pub_imu_data_->publish(imu_data_msg_);
   }
 
   // Filtered Magnetic Field
-  if (pub_filter_mag_.getNumSubscribers()) {
+  if (hasSubscribers(pub_filter_mag_)) {
     populateMagMsg(cd, arrival_stamp, true);
-    pub_filter_mag_.publish(filter_mag_msg_);
+    pub_filter_mag_->publish(filter_mag_msg_);
   }
 
   // Magnetic Field
-  if (pub_imu_mag_.getNumSubscribers()) {
+  if (hasSubscribers(pub_imu_mag_)) {
     populateMagMsg(cd, arrival_stamp, false);
-    pub_imu_mag_.publish(imu_mag_msg_);
+    pub_imu_mag_->publish(imu_mag_msg_);
   }
 
   // Temperature
-  if (pub_temperature_.getNumSubscribers()) {
+  if (hasSubscribers(pub_temperature_)) {
     populateTempMsg(cd, arrival_stamp);
-    pub_temperature_.publish(temperature_msg_);
+    pub_temperature_->publish(temperature_msg_);
   }
 
   // Pressure
-  if (pub_pressure_.getNumSubscribers()) {
+  if (hasSubscribers(pub_pressure_)) {
     populatePresMsg(cd, arrival_stamp);
-    pub_pressure_.publish(pressure_msg_);
+    pub_pressure_->publish(pressure_msg_);
   }
 }
 
 void VectorNavDriver::populateImuMsg(
-  vn::sensors::CompositeData & cd, const ros::Time & stamp, bool filter)
+  vn::sensors::CompositeData & cd, const Time & stamp, bool filter)
 {
-  sensor_msgs::Imu & msg = filter ? filter_data_msg_ : imu_data_msg_;
+  ImuMsg & msg = filter ? filter_data_msg_ : imu_data_msg_;
   msg.header.stamp = stamp;
 
   vn::math::vec3f acc, omega;  // m/s^2, rad/s
@@ -445,9 +598,9 @@ void VectorNavDriver::populateImuMsg(
 }
 
 void VectorNavDriver::populateMagMsg(
-  vn::sensors::CompositeData & cd, const ros::Time & stamp, bool filter)
+  vn::sensors::CompositeData & cd, const Time & stamp, bool filter)
 {
-  sensor_msgs::MagneticField & msg = filter ? filter_mag_msg_ : imu_mag_msg_;
+  MagneticFieldMsg & msg = filter ? filter_mag_msg_ : imu_mag_msg_;
   msg.header.stamp = stamp;
 
   vn::math::vec3f mag;  // gauss
@@ -472,14 +625,14 @@ void VectorNavDriver::populateMagMsg(
   msg.magnetic_field.z = mag[2];
 }
 
-void VectorNavDriver::populateTempMsg(vn::sensors::CompositeData & cd, const ros::Time & stamp)
+void VectorNavDriver::populateTempMsg(vn::sensors::CompositeData & cd, const Time & stamp)
 {
   logger_->trace("Populating Temperature message");
   temperature_msg_.header.stamp = stamp;
   temperature_msg_.temperature = cd.temperature();  // Celsius
 }
 
-void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const ros::Time & stamp)
+void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const Time & stamp)
 {
   logger_->trace("Populating Pressure message");
   pressure_msg_.header.stamp = stamp;
