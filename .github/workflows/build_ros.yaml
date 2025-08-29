@@ -1,4 +1,4 @@
-name: Build ROS Package
+name: build_ros_package
 
 on:
   push:
