@@ -179,9 +179,7 @@ void VectorNavDriver::readParams()
   // Continue with remaining parameters for both ROS1 and ROS2
 #if DETECTED_ROS_VERSION == 1
   node_->param<int>("mag_window_size", i_param, 0);
-  std::cout << "mag_window_size: " << i_param << "\n";
   mag_window_size_ = static_cast<uint16_t>(i_param);
-  std::cout << "mag_window_size_: " << mag_window_size_ << "\n";
   node_->param<int>("accel_window_size", i_param, 4);
   accel_window_size_ = static_cast<uint16_t>(i_param);
   node_->param<int>("gyro_window_size", i_param, 4);
