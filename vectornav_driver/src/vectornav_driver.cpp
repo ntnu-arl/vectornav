@@ -407,12 +407,10 @@ void VectorNavDriver::setupSensor()
   // Setup using the binary output registers. This is significantly faster than using ASCII output
   logger_->debug("Setting up binary output registers");
   vn::sensors::BinaryOutputRegister bor(
-    async_mode_, async_rate_divisor_,
-    (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT : COMMONGROUP_NONE) |
-      COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_IMU |
-      COMMONGROUP_MAGPRES,
-    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE), IMUGROUP_UNCOMPMAG, GPSGROUP_NONE,
-    ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
+    async_mode_, async_rate_divisor_, COMMONGROUP_NONE,
+    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE),
+    IMUGROUP_UNCOMPMAG | IMUGROUP_UNCOMPACCEL | IMUGROUP_UNCOMPGYRO | IMUGROUP_TEMP | IMUGROUP_PRES,
+    GPSGROUP_NONE, ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
   vn::sensors::BinaryOutputRegister bor_none(
     ASYNCMODE_NONE, 1, COMMONGROUP_NONE, TIMEGROUP_NONE, IMUGROUP_NONE, GPSGROUP_NONE,
@@ -520,10 +518,10 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   }
 
   // Filtered IMU
-  if (hasSubscribers(pub_filter_data_)) {
-    populateImuMsg(cd, arrival_stamp, true);
-    pub_filter_data_->publish(filter_data_msg_);
-  }
+  // if (hasSubscribers(pub_filter_data_)) {
+  //   populateImuMsg(cd, arrival_stamp, true);
+  //   pub_filter_data_->publish(filter_data_msg_);
+  // }
 
   // IMU
   if (hasSubscribers(pub_imu_data_)) {
@@ -532,10 +530,10 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   }
 
   // Filtered Magnetic Field
-  if (hasSubscribers(pub_filter_mag_)) {
-    populateMagMsg(cd, arrival_stamp, true);
-    pub_filter_mag_->publish(filter_mag_msg_);
-  }
+  // if (hasSubscribers(pub_filter_mag_)) {
+  //   populateMagMsg(cd, arrival_stamp, true);
+  //   pub_filter_mag_->publish(filter_mag_msg_);
+  // }
 
   // Magnetic Field
   if (hasSubscribers(pub_imu_mag_)) {
