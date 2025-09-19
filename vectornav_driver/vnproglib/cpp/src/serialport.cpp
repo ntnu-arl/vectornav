@@ -720,7 +720,7 @@ struct SerialPort::Impl
 		#elif __APPLE__
 		cfsetspeed(&portSettings, baudrateFlag);
 		#endif
-		portSettings.c_cflag |= CS8 | CLOCAL | CREAD;
+		portSettings.c_cflag |= CS8 | CLOCAL | CREAD | (stopBits == TWO_STOP_BITS ? CSTOPB : 0);
 
 		portSettings.c_iflag = IGNPAR;		// Ignore bytes with parity errors.
 		portSettings.c_oflag = 0;			// Enable raw data output.
