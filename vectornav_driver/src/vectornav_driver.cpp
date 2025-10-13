@@ -410,11 +410,8 @@ void VectorNavDriver::setupSensor()
   // Setup using the binary output registers. This is significantly faster than using ASCII output
   logger_->debug("Setting up binary output registers");
   vn::sensors::BinaryOutputRegister bor(
-    async_mode_, async_rate_divisor_,
-    (is_triggered_ ? COMMONGROUP_TIMESYNCIN | COMMONGROUP_SYNCINCNT : COMMONGROUP_NONE) |
-      COMMONGROUP_QUATERNION | COMMONGROUP_ANGULARRATE | COMMONGROUP_ACCEL | COMMONGROUP_IMU |
-      COMMONGROUP_MAGPRES,
-    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE), IMUGROUP_UNCOMPMAG, GPSGROUP_NONE,
+    async_mode_, async_rate_divisor_, COMMONGROUP_NONE, (adjust_timestamp_ ? TIMEGROUP_TIMESTARTUP : TIMEGROUP_NONE) | (is_triggered_ ? TIMEGROUP_TIMESYNCIN | TIMEGROUP_SYNCINCNT : TIMEGROUP_NONE) |
+    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE), IMUGROUP_UNCOMPACCEL | IMUGROUP_UNCOMPGYRO | IMUGROUP_UNCOMPMAG | IMUGROUP_TEMP | IMUGROUP_PRES, GPSGROUP_NONE,
     ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
   vn::sensors::BinaryOutputRegister bor_none(

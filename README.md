@@ -49,7 +49,7 @@ Pin Number on VN100 | Label on VN100 | Label on FTDI TTL Converter
 
 The complete pin assignments for the VN100 can be found in the [user manual](https://www.vectornav.com/resources/user-manuals)
 
-Note that the default output from the VN100 is in the NED coordinate system.
+Note that the default output from the VN100 is in the NED coordinate system and not all outputs are enabled by default. Use the binary output register to configure the packet for your needs.
 
 Note that the `filter` topics are bias compensated (with the onboard filter) whereas the `imu` topics are not.
 
