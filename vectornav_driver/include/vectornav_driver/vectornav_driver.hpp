@@ -82,6 +82,9 @@ private:
   FluidPressureMsg pressure_msg_;
   TemperatureMsg temperature_msg_;
 
+  Time ros_start_time_;
+  double average_time_difference_ = 0.0;
+
   // Node handle (unified for both ROS1 and ROS2)
   NodeHandle node_;
 
@@ -108,6 +111,7 @@ private:
   uint32_t baud_rate_;
   uint16_t async_mode_;
   uint16_t async_rate_divisor_;
+  bool adjust_timestamp_;
   // Configuration for the sensor being triggered by an external source
   bool is_triggered_;
   uint16_t sync_in_skip_factor_;
@@ -174,6 +178,7 @@ public:
 #endif
 
   void binaryAsyncMessageCallback(Packet & p, size_t index);
+  Time getTime(vn::sensors::CompositeData & cd, const Time & ros_time);
   void populateImuMsg(vn::sensors::CompositeData & cd, const Time & time, bool filter);
   void populateMagMsg(vn::sensors::CompositeData & cd, const Time & time, bool filter);
   void populateTempMsg(vn::sensors::CompositeData & cd, const Time & time);

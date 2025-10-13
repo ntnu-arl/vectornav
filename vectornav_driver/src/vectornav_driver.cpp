@@ -120,6 +120,7 @@ void VectorNavDriver::readParams()
   node_->param<int>("async_mode", i_param, 2);
   async_mode_ = static_cast<AsyncMode>(i_param);
   node_->param<int>("async_rate_divisor", i_param, 4);
+  node_->param<bool>("adjust_timestamp", adjust_timestamp_, true);
   async_rate_divisor_ = static_cast<uint16_t>(i_param);
   node_->param<bool>("is_triggered", is_triggered_, false);
   node_->param<int>("sync_in_skip_factor", i_param, 0);
@@ -150,6 +151,8 @@ void VectorNavDriver::readParams()
   node_->declare_parameter("async_rate_divisor", 4);
   i_param = node_->get_parameter("async_rate_divisor").as_int();
   async_rate_divisor_ = static_cast<uint16_t>(i_param);
+  node_->declare_parameter("adjust_timestamp", true);
+  adjust_timestamp_ = node_->get_parameter("adjust_timestamp").as_bool();
   node_->declare_parameter("is_triggered", false);
   is_triggered_ = node_->get_parameter("is_triggered").as_bool();
   node_->declare_parameter("sync_in_skip_factor", 0);
@@ -479,6 +482,31 @@ void VectorNavDriver::resetServiceCallback(
 }
 #endif
 
+Time VectorNavDriver::getTime(vn::sensors::CompositeData & cd, const Time & ros_time)
+{
+  if (!cd.hasTimeStartup() || !adjust_timestamp_) {
+    return (ros_time);  // don't adjust timestamp
+  }
+  const double sensor_time = cd.timeStartup() * 1e-9;  // time in seconds
+  if (average_time_difference_ == 0) {       // first call
+    ros_start_time_ = ros_time;
+    average_time_difference_ = static_cast<double>(-sensor_time);
+  }
+  // difference between node startup and current ROS time
+  const double ros_dt = (ros_time - ros_start_time_).toSec();
+  // difference between elapsed ROS time and time since sensor startup
+  const double dt = ros_dt - sensor_time;
+  // compute exponential moving average
+  const double alpha = 0.001;  // average over rougly 1000 samples
+  average_time_difference_ =
+    average_time_difference_ * (1.0 - alpha) + alpha * dt;
+
+  // adjust sensor time by average difference to ROS time
+  const ros::Time adj_time =
+    ros_start_time_ + ros::Duration(average_time_difference_ + sensor_time);
+  return (adj_time);
+}
+
 void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 {
 #if DETECTED_ROS_VERSION == 1
@@ -499,6 +527,8 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
   logger_->trace("Finished parsing binary async message");
 
+  const Time stamp = getTime(cd, arrival_stamp);
+
   // The time since the last SyncIn trigger event expressed in nano seconds.
   uint64_t sync_in_time;
   if (cd.hasTimeSyncIn()) sync_in_time = cd.timeSyncIn();
@@ -507,7 +537,7 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   // Sync Out Stamp
   if (hasSubscribers(pub_sync_out_stamp_) && cd.hasSyncOutCnt()) {
     HeaderMsg msg;
-    msg.stamp = arrival_stamp;
+    msg.stamp = stamp;
     msg.frame_id = std::to_string(cd.syncOutCnt());
     if (publish_sync_out_stamp_on_change_) {
       if (cd.syncOutCnt() != sync_out_count_) {
@@ -523,7 +553,7 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   if (
     hasSubscribers(pub_filter_data_) && cd.hasAcceleration() && cd.hasAngularRate() &&
     cd.hasQuaternion()) {
-    populateImuMsg(cd, arrival_stamp, true);
+    populateImuMsg(cd, stamp, true);
     pub_filter_data_->publish(filter_data_msg_);
   }
 
@@ -531,31 +561,31 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   if (
     hasSubscribers(pub_imu_data_) && cd.hasAccelerationUncompensated() &&
     cd.hasAngularRateUncompensated()) {
-    populateImuMsg(cd, arrival_stamp, false);
+    populateImuMsg(cd, stamp, false);
     pub_imu_data_->publish(imu_data_msg_);
   }
 
   // Filtered Magnetic Field
   if (hasSubscribers(pub_filter_mag_) && cd.hasMagnetic()) {
-    populateMagMsg(cd, arrival_stamp, true);
+    populateMagMsg(cd, stamp, true);
     pub_filter_mag_->publish(filter_mag_msg_);
   }
 
   // Magnetic Field
   if (hasSubscribers(pub_imu_mag_) && cd.hasMagneticUncompensated()) {
-    populateMagMsg(cd, arrival_stamp, false);
+    populateMagMsg(cd, stamp, false);
     pub_imu_mag_->publish(imu_mag_msg_);
   }
 
   // Temperature
   if (hasSubscribers(pub_temperature_) && cd.hasTemperature()) {
-    populateTempMsg(cd, arrival_stamp);
+    populateTempMsg(cd, stamp);
     pub_temperature_->publish(temperature_msg_);
   }
 
   // Pressure
   if (hasSubscribers(pub_pressure_) && cd.hasPressure()) {
-    populatePresMsg(cd, arrival_stamp);
+    populatePresMsg(cd, stamp);
     pub_pressure_->publish(pressure_msg_);
   }
 }
