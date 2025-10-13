@@ -24,7 +24,7 @@ vectornav_driver_node:
     # imu sampling rate (800 Hz) divided by this value gives the output rate
     async_rate_divisor: 4
 
-    # adjust the timestamp as per sensor time. False: use arrival stamp. Setting this to true gives order of magnitude more accurate timestamps. 
+    # adjust the timestamp as per sensor time. False: use arrival stamp. Setting this to true gives order of magnitude more accurate timestamps.
     adjust_timestamp: True
 
     # Control whether the IMU is triggered by a pulse on the SYNCIN pin

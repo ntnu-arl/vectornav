@@ -96,7 +96,7 @@ private:
   Publisher pub_pressure_;
   Publisher pub_temperature_;
   Publisher pub_sync_out_stamp_;
-  
+
 #if DETECTED_ROS_VERSION == 1
   // Services
   std::shared_ptr<ros::ServiceServer> srv_reset_;

@@ -410,9 +410,12 @@ void VectorNavDriver::setupSensor()
   // Setup using the binary output registers. This is significantly faster than using ASCII output
   logger_->debug("Setting up binary output registers");
   vn::sensors::BinaryOutputRegister bor(
-    async_mode_, async_rate_divisor_, COMMONGROUP_NONE, (adjust_timestamp_ ? TIMEGROUP_TIMESTARTUP : TIMEGROUP_NONE) | (is_triggered_ ? TIMEGROUP_TIMESYNCIN | TIMEGROUP_SYNCINCNT : TIMEGROUP_NONE) |
-    (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE), IMUGROUP_UNCOMPACCEL | IMUGROUP_UNCOMPGYRO | IMUGROUP_UNCOMPMAG | IMUGROUP_TEMP | IMUGROUP_PRES, GPSGROUP_NONE,
-    ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
+    async_mode_, async_rate_divisor_, COMMONGROUP_NONE,
+    (adjust_timestamp_ ? TIMEGROUP_TIMESTARTUP : TIMEGROUP_NONE) |
+      (is_triggered_ ? TIMEGROUP_TIMESYNCIN | TIMEGROUP_SYNCINCNT : TIMEGROUP_NONE) |
+      (is_triggering_ ? TIMEGROUP_SYNCOUTCNT : TIMEGROUP_NONE),
+    IMUGROUP_UNCOMPACCEL | IMUGROUP_UNCOMPGYRO | IMUGROUP_UNCOMPMAG | IMUGROUP_TEMP | IMUGROUP_PRES,
+    GPSGROUP_NONE, ATTITUDEGROUP_NONE, INSGROUP_NONE, GPSGROUP_NONE);
 
   vn::sensors::BinaryOutputRegister bor_none(
     ASYNCMODE_NONE, 1, COMMONGROUP_NONE, TIMEGROUP_NONE, IMUGROUP_NONE, GPSGROUP_NONE,
@@ -485,7 +488,7 @@ Time VectorNavDriver::getTime(vn::sensors::CompositeData & cd, const Time & ros_
     return (ros_time);  // don't adjust timestamp
   }
   const double sensor_time = cd.timeStartup() * 1e-9;  // time in seconds
-  if (average_time_difference_ == 0) {       // first call
+  if (average_time_difference_ == 0) {                 // first call
     ros_start_time_ = ros_time;
     average_time_difference_ = static_cast<double>(-sensor_time);
   }
@@ -495,8 +498,7 @@ Time VectorNavDriver::getTime(vn::sensors::CompositeData & cd, const Time & ros_
   const double dt = ros_dt - sensor_time;
   // compute exponential moving average
   const double alpha = 0.001;  // average over rougly 1000 samples
-  average_time_difference_ =
-    average_time_difference_ * (1.0 - alpha) + alpha * dt;
+  average_time_difference_ = average_time_difference_ * (1.0 - alpha) + alpha * dt;
 
   // adjust sensor time by average difference to ROS time
   const ros::Time adj_time =
