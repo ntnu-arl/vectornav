@@ -48,7 +48,7 @@ namespace vectornav_driver
 {
 #if DETECTED_ROS_VERSION == 1
 using NodeHandle = std::shared_ptr<ros::NodeHandle>;
-using Publisher = ros::Publisher;
+using Publisher = std::shared_ptr<ros::Publisher>;
 using Time = ros::Time;
 using ImuMsg = sensor_msgs::Imu;
 using MagneticFieldMsg = sensor_msgs::MagneticField;
@@ -86,26 +86,18 @@ private:
   NodeHandle node_;
 
   // Publishers (using shared_ptr for both ROS1 and ROS2)
+  Publisher pub_filter_data_;
+  Publisher pub_imu_data_;
+  Publisher pub_filter_mag_;
+  Publisher pub_imu_mag_;
+  Publisher pub_pressure_;
+  Publisher pub_temperature_;
+  Publisher pub_sync_out_stamp_;
+  
 #if DETECTED_ROS_VERSION == 1
-  std::shared_ptr<ros::Publisher> pub_filter_data_;
-  std::shared_ptr<ros::Publisher> pub_imu_data_;
-  std::shared_ptr<ros::Publisher> pub_filter_mag_;
-  std::shared_ptr<ros::Publisher> pub_imu_mag_;
-  std::shared_ptr<ros::Publisher> pub_pressure_;
-  std::shared_ptr<ros::Publisher> pub_temperature_;
-  std::shared_ptr<ros::Publisher> pub_sync_out_stamp_;
-
   // Services
   std::shared_ptr<ros::ServiceServer> srv_reset_;
 #else
-  rclcpp::Publisher<ImuMsg>::SharedPtr pub_filter_data_;
-  rclcpp::Publisher<ImuMsg>::SharedPtr pub_imu_data_;
-  rclcpp::Publisher<MagneticFieldMsg>::SharedPtr pub_filter_mag_;
-  rclcpp::Publisher<MagneticFieldMsg>::SharedPtr pub_imu_mag_;
-  rclcpp::Publisher<FluidPressureMsg>::SharedPtr pub_pressure_;
-  rclcpp::Publisher<TemperatureMsg>::SharedPtr pub_temperature_;
-  rclcpp::Publisher<HeaderMsg>::SharedPtr pub_sync_out_stamp_;
-
   // Services
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr srv_reset_;
 #endif
