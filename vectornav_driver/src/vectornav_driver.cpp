@@ -520,37 +520,41 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   }
 
   // Filtered IMU
-  if (hasSubscribers(pub_filter_data_)) {
+  if (
+    hasSubscribers(pub_filter_data_) && cd.hasAcceleration() && cd.hasAngularRate() &&
+    cd.hasQuaternion()) {
     populateImuMsg(cd, arrival_stamp, true);
     pub_filter_data_->publish(filter_data_msg_);
   }
 
   // IMU
-  if (hasSubscribers(pub_imu_data_)) {
+  if (
+    hasSubscribers(pub_imu_data_) && cd.hasAccelerationUncompensated() &&
+    cd.hasAngularRateUncompensated()) {
     populateImuMsg(cd, arrival_stamp, false);
     pub_imu_data_->publish(imu_data_msg_);
   }
 
   // Filtered Magnetic Field
-  if (hasSubscribers(pub_filter_mag_)) {
+  if (hasSubscribers(pub_filter_mag_) && cd.hasMagnetic()) {
     populateMagMsg(cd, arrival_stamp, true);
     pub_filter_mag_->publish(filter_mag_msg_);
   }
 
   // Magnetic Field
-  if (hasSubscribers(pub_imu_mag_)) {
+  if (hasSubscribers(pub_imu_mag_) && cd.hasMagneticUncompensated()) {
     populateMagMsg(cd, arrival_stamp, false);
     pub_imu_mag_->publish(imu_mag_msg_);
   }
 
   // Temperature
-  if (hasSubscribers(pub_temperature_)) {
+  if (hasSubscribers(pub_temperature_) && cd.hasTemperature()) {
     populateTempMsg(cd, arrival_stamp);
     pub_temperature_->publish(temperature_msg_);
   }
 
   // Pressure
-  if (hasSubscribers(pub_pressure_)) {
+  if (hasSubscribers(pub_pressure_) && cd.hasPressure()) {
     populatePresMsg(cd, arrival_stamp);
     pub_pressure_->publish(pressure_msg_);
   }
