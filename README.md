@@ -38,7 +38,7 @@ catkin build vectornav_driver
 
 ## Usage
 
-Usage of the VN100 via a USB connection requires an [FTDI TTL converter](https://no.rs-online.com/web/p/communication-wireless-development-tools/0429284). The converter should be connected to the VN100 as shown below
+Usage of the VN100 via a USB connection requires an [FTDI TTL converter](https://no.rs-online.com/web/p/communication-wireless-development-tools/0429284) (the cable VectorNav provides is also internally a FTDI TTL converter). The converter should be connected to the VN100 as shown below
 
 Pin Number on VN100 | Label on VN100 | Label on FTDI TTL Converter
 --- | --- | ---
@@ -99,7 +99,7 @@ Launch the node with:
 ```bash
 cd colcon_ws
 source install/setup.bash
-ros2 launch vectornav_driver vectornav_driver_ros2.py
+ros2 launch vectornav_driver vectornav_driver_ros2_launch.py
 ```
 
 #### ROS1
@@ -109,15 +109,7 @@ Modify the `vectornav_driver/config/vn100_params_ros1.yaml` per your requirement
 ```bash
 cd catkin_ws
 source devel/setup.bash
-roslaunch vectornav_driver vectornav_driver.launch
-```
-
-### Running the node
-
-```bash
-cd catkin_ws
-source devel/setup.bash
-roslaunch vectornav_driver vectornav_driver.launch
+roslaunch vectornav_driver vectornav_driver_ros1.launch
 ```
 
 ### Compatibility
@@ -128,6 +120,7 @@ This driver has been tested on the following systems:
   - Pop OS 20.04 amd64
   - Ubuntu 20.04 arm64
   - Ubuntu 20.04 amd64
+  - Ubuntu 22.04 arm64
   - Ubuntu 24.04 amd64
 
 #### Known Issues
