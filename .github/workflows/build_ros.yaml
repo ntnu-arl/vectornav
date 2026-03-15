@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        ros_distro: [humble, jazzy]
+        ros_distro: [humble, jazzy, rolling]
     container: osrf/ros:${{ matrix.ros_distro }}-desktop-full
     steps:
     - name: Checkout repository
