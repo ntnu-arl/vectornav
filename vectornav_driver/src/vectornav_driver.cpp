@@ -13,7 +13,7 @@ void callbackWrapper(void * user_data, Packet & p, size_t index)
   static_cast<VectorNavDriver *>(user_data)->binaryAsyncMessageCallback(p, index);
 }
 
-VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
+VectorNavDriver::VectorNavDriver(ri::NodeHandle node) : node_(node)
 {
   // Get parameters
   readParams();
@@ -22,11 +22,7 @@ VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
   // Setup logging sinks
   logger_console_sink_ = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   logger_console_sink_->set_level(console_log_level_);
-#if DETECTED_ROS_VERSION == 1
-  std::string node_name = ros::this_node::getName();
-#else
-  std::string node_name = node_->get_name();
-#endif
+  std::string node_name = ri::get_node_name(node_);
   logger_file_sink_ =
     std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_directory_ + node_name + ".log", true);
   logger_file_sink_->set_level(file_log_level_);
@@ -65,41 +61,24 @@ VectorNavDriver::VectorNavDriver(NodeHandle node) : node_(node)
 
   // Setup Publishers
   logger_->debug("Setting up publishers");
+  pub_filter_data_ = ri::create_publisher<ri::SensorMsgsImu>(node_, "filter/data", 1000);
+  pub_imu_data_ = ri::create_publisher<ri::SensorMsgsImu>(node_, "imu/data", 1000);
+  pub_filter_mag_ = ri::create_publisher<ri::SensorMsgsMagneticField>(node_, "filter/mag", 1000);
+  pub_imu_mag_ = ri::create_publisher<ri::SensorMsgsMagneticField>(node_, "imu/mag", 1000);
+  pub_temperature_ = ri::create_publisher<ri::SensorMsgsTemperature>(node_, "temperature", 1000);
+  pub_pressure_ = ri::create_publisher<ri::SensorMsgsFluidPressure>(node_, "pressure", 1000);
+  pub_sync_out_stamp_ = ri::create_publisher<ri::StdMsgsHeader>(node_, "sync_out_stamp", 1000);
+
+  // Setup Services
+  logger_->debug("Setting up services");
 #if DETECTED_ROS_VERSION == 1
-  pub_filter_data_ = std::make_shared<ros::Publisher>(
-    node_->advertise<sensor_msgs::Imu>("filter/data", 1000, false));
-  pub_imu_data_ =
-    std::make_shared<ros::Publisher>(node_->advertise<sensor_msgs::Imu>("imu/data", 1000, false));
-  pub_filter_mag_ = std::make_shared<ros::Publisher>(
-    node_->advertise<sensor_msgs::MagneticField>("filter/mag", 1000, false));
-  pub_imu_mag_ = std::make_shared<ros::Publisher>(
-    node_->advertise<sensor_msgs::MagneticField>("imu/mag", 1000, false));
-  pub_temperature_ = std::make_shared<ros::Publisher>(
-    node_->advertise<sensor_msgs::Temperature>("temperature", 1000, false));
-  pub_pressure_ = std::make_shared<ros::Publisher>(
-    node_->advertise<sensor_msgs::FluidPressure>("pressure", 1000, false));
-  pub_sync_out_stamp_ = std::make_shared<ros::Publisher>(
-    node_->advertise<std_msgs::Header>("sync_out_stamp", 1000, false));
-
-  // Setup Services
-  logger_->debug("Setting up services");
-  srv_reset_ = std::make_shared<ros::ServiceServer>(
-    node_->advertiseService("reset", &VectorNavDriver::resetServiceCallback, this));
+  srv_reset_ = ri::create_empty_service(node_, "reset", &VectorNavDriver::resetServiceCallback, this);
 #else
-  pub_filter_data_ = node_->create_publisher<ImuMsg>("~/filter/data", 1000);
-  pub_imu_data_ = node_->create_publisher<ImuMsg>("~/imu/data", 1000);
-  pub_filter_mag_ = node_->create_publisher<MagneticFieldMsg>("~/filter/mag", 1000);
-  pub_imu_mag_ = node_->create_publisher<MagneticFieldMsg>("~/imu/mag", 1000);
-  pub_temperature_ = node_->create_publisher<TemperatureMsg>("~/temperature", 1000);
-  pub_pressure_ = node_->create_publisher<FluidPressureMsg>("~/pressure", 1000);
-  pub_sync_out_stamp_ = node_->create_publisher<HeaderMsg>("~/sync_out_stamp", 1000);
-
-  // Setup Services
-  logger_->debug("Setting up services");
-  srv_reset_ = node_->create_service<std_srvs::srv::Empty>(
-    "~/reset", [this](
-                 const std::shared_ptr<std_srvs::srv::Empty::Request> req,
-                 std::shared_ptr<std_srvs::srv::Empty::Response> res) {
+  srv_reset_ = ri::create_empty_service(
+    node_, "reset",
+    [this](
+      const std::shared_ptr<std_srvs::srv::Empty::Request> req,
+      std::shared_ptr<std_srvs::srv::Empty::Response> res) {
       this->resetServiceCallback(req, res);
     });
 #endif
@@ -135,7 +114,7 @@ void VectorNavDriver::readParams()
   node_->param<bool>("set_reference_frame", set_reference_frame_, false);
   XmlRpc::XmlRpcValue reference_frame_rpc;
   node_->getParam("reference_frame", reference_frame_rpc);
-  setMatrix(reference_frame_rpc, reference_frame_);
+  ri::setMatrix(reference_frame_rpc, reference_frame_);
 #else
   node_->declare_parameter("sensor_family", 0);
   i_param = node_->get_parameter("sensor_family").as_int();
@@ -176,7 +155,7 @@ void VectorNavDriver::readParams()
   std::vector<double> default_reference_frame = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   node_->declare_parameter("reference_frame", default_reference_frame);
   auto reference_frame_param = node_->get_parameter("reference_frame").as_double_array();
-  setMatrix(reference_frame_param, reference_frame_);
+  ri::setMatrix(reference_frame_param, reference_frame_);
 #endif
 
   // Continue with remaining parameters for both ROS1 and ROS2
@@ -482,7 +461,7 @@ void VectorNavDriver::resetServiceCallback(
 }
 #endif
 
-Time VectorNavDriver::getTime(vn::sensors::CompositeData & cd, const Time & ros_time)
+ri::Time VectorNavDriver::getTime(vn::sensors::CompositeData & cd, const ri::Time & ros_time)
 {
   if (!cd.hasTimeStartup() || !adjust_timestamp_) {
     return (ros_time);  // don't adjust timestamp
@@ -493,7 +472,7 @@ Time VectorNavDriver::getTime(vn::sensors::CompositeData & cd, const Time & ros_
     average_time_difference_ = static_cast<double>(-sensor_time);
   }
   // difference between node startup and current ROS time
-  const double ros_dt = (ros_time - ros_start_time_).toSec();
+  const double ros_dt = ri::to_seconds(ros_time - ros_start_time_);
   // difference between elapsed ROS time and time since sensor startup
   const double dt = ros_dt - sensor_time;
   // compute exponential moving average
@@ -501,20 +480,14 @@ Time VectorNavDriver::getTime(vn::sensors::CompositeData & cd, const Time & ros_
   average_time_difference_ = average_time_difference_ * (1.0 - alpha) + alpha * dt;
 
   // adjust sensor time by average difference to ROS time
-  const ros::Time adj_time =
-    ros_start_time_ + ros::Duration(average_time_difference_ + sensor_time);
+  const ri::Time adj_time = ri::time_add(ros_start_time_, average_time_difference_ + sensor_time);
   return (adj_time);
 }
 
 void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 {
-#if DETECTED_ROS_VERSION == 1
-  const Time arrival_stamp = ros::Time::now();
-  logger_->trace("Received async message at timestamp: {}", arrival_stamp.toSec());
-#else
-  const Time arrival_stamp = node_->get_clock()->now();
-  logger_->trace("Received async message at timestamp: {}", arrival_stamp.seconds());
-#endif
+  const ri::Time arrival_stamp = ri::now(node_);
+  logger_->trace("Received async message at timestamp: {}", ri::to_seconds(arrival_stamp));
 
   static bool first = true;
   if (first) {
@@ -526,7 +499,7 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
   vn::sensors::CompositeData cd = vn::sensors::CompositeData::parse(p);
   logger_->trace("Finished parsing binary async message");
 
-  const Time stamp = getTime(cd, arrival_stamp);
+  const ri::Time stamp = getTime(cd, arrival_stamp);
 
   // The time since the last SyncIn trigger event expressed in nano seconds.
   uint64_t sync_in_time;
@@ -534,8 +507,8 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 
   logger_->trace("Publishing parsed data");
   // Sync Out Stamp
-  if (hasSubscribers(pub_sync_out_stamp_) && cd.hasSyncOutCnt()) {
-    HeaderMsg msg;
+  if (ri::has_subscribers(pub_sync_out_stamp_) && cd.hasSyncOutCnt()) {
+    ri::StdMsgsHeader msg;
     msg.stamp = stamp;
     msg.frame_id = std::to_string(cd.syncOutCnt());
     if (publish_sync_out_stamp_on_change_) {
@@ -550,7 +523,7 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 
   // Filtered IMU
   if (
-    hasSubscribers(pub_filter_data_) && cd.hasAcceleration() && cd.hasAngularRate() &&
+    ri::has_subscribers(pub_filter_data_) && cd.hasAcceleration() && cd.hasAngularRate() &&
     cd.hasQuaternion()) {
     populateImuMsg(cd, stamp, true);
     pub_filter_data_->publish(filter_data_msg_);
@@ -558,41 +531,41 @@ void VectorNavDriver::binaryAsyncMessageCallback(Packet & p, size_t index)
 
   // IMU
   if (
-    hasSubscribers(pub_imu_data_) && cd.hasAccelerationUncompensated() &&
+    ri::has_subscribers(pub_imu_data_) && cd.hasAccelerationUncompensated() &&
     cd.hasAngularRateUncompensated()) {
     populateImuMsg(cd, stamp, false);
     pub_imu_data_->publish(imu_data_msg_);
   }
 
   // Filtered Magnetic Field
-  if (hasSubscribers(pub_filter_mag_) && cd.hasMagnetic()) {
+  if (ri::has_subscribers(pub_filter_mag_) && cd.hasMagnetic()) {
     populateMagMsg(cd, stamp, true);
     pub_filter_mag_->publish(filter_mag_msg_);
   }
 
   // Magnetic Field
-  if (hasSubscribers(pub_imu_mag_) && cd.hasMagneticUncompensated()) {
+  if (ri::has_subscribers(pub_imu_mag_) && cd.hasMagneticUncompensated()) {
     populateMagMsg(cd, stamp, false);
     pub_imu_mag_->publish(imu_mag_msg_);
   }
 
   // Temperature
-  if (hasSubscribers(pub_temperature_) && cd.hasTemperature()) {
+  if (ri::has_subscribers(pub_temperature_) && cd.hasTemperature()) {
     populateTempMsg(cd, stamp);
     pub_temperature_->publish(temperature_msg_);
   }
 
   // Pressure
-  if (hasSubscribers(pub_pressure_) && cd.hasPressure()) {
+  if (ri::has_subscribers(pub_pressure_) && cd.hasPressure()) {
     populatePresMsg(cd, stamp);
     pub_pressure_->publish(pressure_msg_);
   }
 }
 
 void VectorNavDriver::populateImuMsg(
-  vn::sensors::CompositeData & cd, const Time & stamp, bool filter)
+  vn::sensors::CompositeData & cd, const ri::Time & stamp, bool filter)
 {
-  ImuMsg & msg = filter ? filter_data_msg_ : imu_data_msg_;
+  ri::SensorMsgsImu & msg = filter ? filter_data_msg_ : imu_data_msg_;
   msg.header.stamp = stamp;
 
   vn::math::vec3f acc, omega;  // m/s^2, rad/s
@@ -629,9 +602,9 @@ void VectorNavDriver::populateImuMsg(
 }
 
 void VectorNavDriver::populateMagMsg(
-  vn::sensors::CompositeData & cd, const Time & stamp, bool filter)
+  vn::sensors::CompositeData & cd, const ri::Time & stamp, bool filter)
 {
-  MagneticFieldMsg & msg = filter ? filter_mag_msg_ : imu_mag_msg_;
+  ri::SensorMsgsMagneticField & msg = filter ? filter_mag_msg_ : imu_mag_msg_;
   msg.header.stamp = stamp;
 
   vn::math::vec3f mag;  // gauss
@@ -656,14 +629,14 @@ void VectorNavDriver::populateMagMsg(
   msg.magnetic_field.z = mag[2];
 }
 
-void VectorNavDriver::populateTempMsg(vn::sensors::CompositeData & cd, const Time & stamp)
+void VectorNavDriver::populateTempMsg(vn::sensors::CompositeData & cd, const ri::Time & stamp)
 {
   logger_->trace("Populating Temperature message");
   temperature_msg_.header.stamp = stamp;
   temperature_msg_.temperature = cd.temperature();  // Celsius
 }
 
-void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const Time & stamp)
+void VectorNavDriver::populatePresMsg(vn::sensors::CompositeData & cd, const ri::Time & stamp)
 {
   logger_->trace("Populating Pressure message");
   pressure_msg_.header.stamp = stamp;
