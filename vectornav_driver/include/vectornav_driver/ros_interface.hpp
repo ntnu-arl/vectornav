@@ -75,10 +75,7 @@ inline Time time_from_seconds(double secs)
   return t;
 }
 
-inline Time time_add(const Time & t, double secs)
-{
-  return t + ros::Duration(secs);
-}
+inline Time time_add(const Time & t, double secs) { return t + ros::Duration(secs); }
 
 // Publisher utilities
 template <typename T>
@@ -93,27 +90,20 @@ using EmptySrvServer = std::shared_ptr<ros::ServiceServer>;
 template <typename DriverT>
 EmptySrvServer create_empty_service(
   NodeHandle & nh, const std::string & name,
-  bool (DriverT::*callback)(std_srvs::EmptyRequest &, std_srvs::EmptyResponse &),
-  DriverT * obj)
+  bool (DriverT::*callback)(std_srvs::EmptyRequest &, std_srvs::EmptyResponse &), DriverT * obj)
 {
   return std::make_shared<ros::ServiceServer>(nh->advertiseService(name, callback, obj));
 }
 
 // Init, spin, shutdown
-inline void init(int argc, char ** argv, const std::string & name)
-{
-  ros::init(argc, argv, name);
-}
+inline void init(int argc, char ** argv, const std::string & name) { ros::init(argc, argv, name); }
 
 inline NodeHandle create_node_handle(const std::string &)
 {
   return std::make_shared<ros::NodeHandle>("~");
 }
 
-inline std::string get_node_name(const NodeHandle &)
-{
-  return ros::this_node::getName();
-}
+inline std::string get_node_name(const NodeHandle &) { return ros::this_node::getName(); }
 
 inline void spin(NodeHandle) { ros::spin(); }
 inline void shutdown() {}
@@ -139,7 +129,7 @@ using Duration = rclcpp::Duration;
 
 // Publisher type alias (ROS2 publishers are templated)
 template <typename MessageType>
-using Publisher = std::shared_ptr<rclcpp::Publisher<MessageType>>;
+using Publisher = std::shared_ptr<rclcpp::Publisher<MessageType> >;
 
 // Message type aliases
 using StdMsgsHeader = std_msgs::msg::Header;
@@ -196,28 +186,21 @@ inline bool has_subscribers(const std::shared_ptr<T> & publisher)
 using EmptySrvServer = rclcpp::Service<std_srvs::srv::Empty>::SharedPtr;
 
 template <typename Callback>
-EmptySrvServer create_empty_service(
-  NodeHandle & node, const std::string & name, Callback callback)
+EmptySrvServer create_empty_service(NodeHandle & node, const std::string & name, Callback callback)
 {
   const std::string full_name = (name.empty() || name[0] == '/') ? name : "~/" + name;
   return node->create_service<std_srvs::srv::Empty>(full_name, callback);
 }
 
 // Init, spin, shutdown
-inline void init(int argc, char ** argv, const std::string &)
-{
-  rclcpp::init(argc, argv);
-}
+inline void init(int argc, char ** argv, const std::string &) { rclcpp::init(argc, argv); }
 
 inline NodeHandle create_node_handle(const std::string & name)
 {
   return std::make_shared<rclcpp::Node>(name);
 }
 
-inline std::string get_node_name(const NodeHandle & node)
-{
-  return node->get_name();
-}
+inline std::string get_node_name(const NodeHandle & node) { return node->get_name(); }
 
 inline void spin(NodeHandle node) { rclcpp::spin(node); }
 inline void shutdown() { rclcpp::shutdown(); }

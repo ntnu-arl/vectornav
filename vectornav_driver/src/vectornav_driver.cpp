@@ -72,7 +72,8 @@ VectorNavDriver::VectorNavDriver(ri::NodeHandle node) : node_(node)
   // Setup Services
   logger_->debug("Setting up services");
 #if DETECTED_ROS_VERSION == 1
-  srv_reset_ = ri::create_empty_service(node_, "reset", &VectorNavDriver::resetServiceCallback, this);
+  srv_reset_ =
+    ri::create_empty_service(node_, "reset", &VectorNavDriver::resetServiceCallback, this);
 #else
   srv_reset_ = ri::create_empty_service(
     node_, "reset",
