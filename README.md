@@ -1,7 +1,9 @@
 # vectornav_driver
 
 [![Formatting (pre-commit)](https://github.com/ntnu-arl/vectornav/actions/workflows/format.yaml/badge.svg?event=push)](https://github.com/ntnu-arl/vectornav/actions/workflows/format.yaml)
-[![ROS Packages](https://github.com/ntnu-arl/vectornav/actions/workflows/build_ros.yaml/badge.svg?=event=push)](https://github.com/ntnu-arl/vectornav/actions/workflows/build_ros.yaml)
+[![ROS1 Noetic](https://img.shields.io/github/actions/workflow/status/ntnu-arl/vectornav/build_ros.yaml?event=push&nameFilter=build_ros1_noetic&label=ROS1%20Noetic)](https://github.com/ntnu-arl/vectornav/actions/workflows/build_ros.yaml)
+[![ROS2 Humble](https://img.shields.io/github/actions/workflow/status/ntnu-arl/vectornav/build_ros.yaml?event=push&nameFilter=build_ros2_humble&label=ROS2%20Humble)](https://github.com/ntnu-arl/vectornav/actions/workflows/build_ros.yaml)
+[![ROS2 Jazzy](https://img.shields.io/github/actions/workflow/status/ntnu-arl/vectornav/build_ros.yaml?event=push&nameFilter=build_ros2_jazzy&label=ROS2%20Jazzy)](https://github.com/ntnu-arl/vectornav/actions/workflows/build_ros.yaml)
 
 A minimal driver for VectorNav IMUs
 

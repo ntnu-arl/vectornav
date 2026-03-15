@@ -7,6 +7,7 @@ on:
 
 jobs:
   build_ros2:
+    name: build_ros2_${{ matrix.ros_distro }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -38,6 +39,7 @@ jobs:
       shell: bash
 
   build_ros1:
+    name: build_ros1_${{ matrix.ros_distro }}
     runs-on: ubuntu-latest
 
     strategy:
